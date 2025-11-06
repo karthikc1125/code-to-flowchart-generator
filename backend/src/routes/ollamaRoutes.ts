@@ -6,21 +6,37 @@ import path from 'path';
 export const ollamaRouter = Router();
 
 // Cache RAG instructions to avoid reading file on every request
-let cachedInstructions: any = null;
+let cachedExplainInstructions: any = null;
+let cachedGenerateInstructions: any = null;
 let lastLoadTime = 0;
 const CACHE_DURATION = 60000; // 1 minute
 
-async function getInstructions() {
+async function getInstructions(mode: 'explain' | 'generate' = 'explain') {
   const now = Date.now();
-  if (cachedInstructions && (now - lastLoadTime) < CACHE_DURATION) {
-    return cachedInstructions;
+  
+  // Check cache for the requested mode
+  if (mode === 'generate' && cachedGenerateInstructions && (now - lastLoadTime) < CACHE_DURATION) {
+    return cachedGenerateInstructions;
+  }
+  if (mode === 'explain' && cachedExplainInstructions && (now - lastLoadTime) < CACHE_DURATION) {
+    return cachedExplainInstructions;
   }
   
   const baseDir = path.resolve('rag/instructions');
-  const instructionsRaw = await readFile(path.join(baseDir, 'rag_instructions.json'), 'utf-8').catch(() => '{}');
-  cachedInstructions = JSON.parse(instructionsRaw || '{}');
-  lastLoadTime = now;
-  return cachedInstructions;
+  
+  if (mode === 'generate') {
+    // Load code generation instructions
+    const instructionsRaw = await readFile(path.join(baseDir, 'generate_code_instructions.json'), 'utf-8').catch(() => '{}');
+    cachedGenerateInstructions = JSON.parse(instructionsRaw || '{}');
+    lastLoadTime = now;
+    return cachedGenerateInstructions;
+  } else {
+    // Load code explanation instructions
+    const instructionsRaw = await readFile(path.join(baseDir, 'rag_instructions.json'), 'utf-8').catch(() => '{}');
+    cachedExplainInstructions = JSON.parse(instructionsRaw || '{}');
+    lastLoadTime = now;
+    return cachedExplainInstructions;
+  }
 }
 
 // Health check (verifies Ollama daemon is reachable)
@@ -50,64 +66,79 @@ ollamaRouter.post('/rag-convert', async (req, res) => {
     if (!model) return res.status(400).json({ error: 'model is required' });
     if (!input) return res.status(400).json({ error: 'input is required' });
 
-    // Load RAG instructions (cached)
-    const instructions = await getInstructions();
-
     // Auto-detect mode if not specified
-    // If input looks like code (contains common programming keywords), it's likely explanation
-    // If input is a natural language request, it's likely generation
     const detectedMode = mode || detectMode(input);
     
+    // Load RAG instructions based on detected mode
+    const instructions = await getInstructions(detectedMode);
+
     let prompt = '';
     
     if (detectedMode === 'explain') {
-      // Enhanced CODE EXPLANATION MODE with structured prompt
-      const explanationTask = instructions?.tasks?.code_explanation || {};
-      const structure = explanationTask?.structure?.join(' > ') || 'Overview > Explanation > Key Concepts > Flow';
-      const rules = explanationTask?.rules?.join('\n') || 'Be clear and educational';
+      // CODE EXPLANATION MODE
+      const rules = instructions?.rules || [];
+      const template = instructions?.template || {};
       
       prompt = [
         'You are an expert programming instructor. Explain the following code in detail.',
-        'Follow this exact structure: ' + structure,
-        'Follow these rules:',
-        rules,
+        '',
+        'Rules:',
+        ...rules.map((r: string) => `- ${r}`),
         '',
         'Code to explain:',
-        '```code',
+        '``',
         input,
         '```',
         '',
-        'Provide a comprehensive explanation without any comments in your response, only structured markdown:'
+        'Provide your explanation following the template structure.'
       ].join('\n');
     } else {
-      // Enhanced CODE GENERATION MODE with structured prompt
-      const generationTask = instructions?.tasks?.code_generation || {};
-      const rules = generationTask?.rules?.join('\n') || 'Generate clean, executable code';
-      const languages = generationTask?.languages || {};
+      // CODE GENERATION MODE - Optimized for code models like DeepSeek-Coder
       
       prompt = [
-        'You are an expert programmer. Generate clean, executable code for the following request.',
-        'Follow these rules:',
-        rules,
+        '### Instruction:',
+        'Write code for the following task. Output only the code, no explanations.',
         '',
-        'Language-specific guidelines:',
-        JSON.stringify(languages, null, 2),
-        '',
-        'Request:',
+        '### Task:',
         input,
         '',
-        'Generate ONLY the code without any comments, explanations, or markdown formatting:'
+        '### Code:'
       ].join('\n');
     }
     
-    const result = await ollamaService.generate(model, prompt);
+    const result = await ollamaService.generate(model, prompt, {
+      temperature: 0.1,        // Very low for DeepSeek-Coder
+      top_p: 0.95,
+      top_k: 50,
+      num_predict: 512,        // Sufficient for most code
+      repeat_penalty: 1.0,     // DeepSeek-Coder handles this well
+      stop: ['###', 'Instruction:', 'Task:', '\n\n\n']  // Stop at section markers or excessive newlines
+    });
     let response = String(result?.response ?? '');
     console.log(`[RAG-Convert] Generated response length: ${response.length}`);
+    console.log(`[RAG-Convert] First 200 chars of response: ${response.substring(0, 200)}`);
+    
+    // Validate response for hallucination/malformation
+    const hasRepeatedCodeBlocks = (response.match(/```/g) || []).length > 6; // More than 3 code blocks
+    const hasExcessiveRepetition = /(.{20,})\1{2,}/.test(response); // Same 20+ chars repeated 3+ times
+    const hasGarbageSymbols = (response.match(/[;}]{3,}/g) || []).length > 0; // 3+ consecutive braces/semicolons
+    
+    if (hasRepeatedCodeBlocks || hasExcessiveRepetition || hasGarbageSymbols) {
+      console.error('[RAG-Convert] Detected hallucinated/malformed response');
+      response = '';
+    }
     
     // Clean response based on mode
     if (detectedMode === 'generate') {
-      // For code generation, extract only the actual code and discard comments or plain text
+      // For code generation, extract the code
       response = extractCodeFromResponse(response);
+      console.log(`[RAG-Convert] After extraction, code length: ${response.length}`);
+      
+      // If still empty after extraction, return error
+      if (!response || response.trim().length === 0) {
+        console.error('[RAG-Convert] Code extraction failed - AI did not return valid code');
+        response = '// Error: Unable to generate valid code.\n// The AI model may not be suitable for code generation.\n// Please try:\n//   1. Using a code-focused model (e.g., codellama, deepseek-coder)\n//   2. Simplifying your request\n//   3. Being more specific about the programming language';
+      }
     } else {
       // For code explanation, ensure clean markdown without extra comments
       response = response
@@ -127,40 +158,64 @@ ollamaRouter.post('/rag-convert', async (req, res) => {
 function extractCodeFromResponse(response: string): string {
   if (!response) return '';
   
-  // First, try to extract code from markdown code blocks
-  const codeBlockMatch = response.match(/```[\w]*\n([\s\S]*?)```/);
-  if (codeBlockMatch && codeBlockMatch[1]) {
-    const code = codeBlockMatch[1].trim();
-    // Remove inline comments from the extracted code
-    return removeInlineComments(code);
-  }
+  console.log('[extractCodeFromResponse] Processing response, length:', response.length);
   
-  // If no code blocks, look for common code patterns and extract relevant parts
-  const lines = response.split('\n');
-  const codeLines = [];
+  // Method 1: Try to extract code from ``` delimiters if present
+  const codeBlockRegex = /```(?:[a-zA-Z0-9]+)?\s*\n([\s\S]*?)\n```/;
+  const match = response.match(codeBlockRegex);
   
-  for (const line of lines) {
-    // Check if line contains code-like patterns
-    if (line.match(/(?:function|def|class|public|private|const|let|var|#include|import|using\s+namespace|console\.log|print\(|printf\(|scanf\(|\bif\b|\bfor\b|\bwhile\b|\breturn\b|=|{|\}|;)/)) {
-      codeLines.push(line);
+  if (match && match[1]) {
+    const code = match[1].trim();
+    
+    // Validate that the code is not empty and contains actual code
+    if (code.length < 10) {
+      console.log('[extractCodeFromResponse] Code block too short, likely invalid');
+      return '';
     }
+    
+    // Check if it's just repeated delimiters
+    if (code.split('\n').every(line => line.trim().startsWith('```') || line.trim() === '')) {
+      console.log('[extractCodeFromResponse] Code block contains only delimiters, invalid');
+      return '';
+    }
+    
+    console.log('[extractCodeFromResponse] Successfully extracted code from ``` delimiters, length:', code.length);
+    return code; // Return code as-is without removing comments
   }
   
-  // If we found code lines, process them
-  if (codeLines.length > 0) {
-    const code = codeLines.join('\n').trim();
-    // Remove inline comments from the extracted code
-    return removeInlineComments(code);
+  console.log('[extractCodeFromResponse] No ``` delimiters found, treating entire response as code');
+  
+  // Method 2: If no delimiters, treat the entire response as code
+  // This allows direct code responses without ``` wrappers
+  const trimmedResponse = response.trim();
+  
+  // First, reject purely explanatory text (common AI mistakes)
+  const hasExplanatoryPhrases = /(?:here.{0,20}is|sure.{0,20}here|this.{0,20}code|this.{0,20}program|explanation|following.{0,20}code|below.{0,20}code)/i.test(trimmedResponse);
+  const hasCodeStart = /^(?:#include|import |function |def |class |public |program |var |const |let |int |void )/.test(trimmedResponse);
+  
+  if (hasExplanatoryPhrases && !hasCodeStart) {
+    console.log('[extractCodeFromResponse] Response appears to be explanatory text, not code');
+    return '';
   }
   
-  // Last resort: return the original response with basic cleaning
-  const cleaned = response
-    .replace(/```[\w]*\n/g, '')  // Remove opening code fence
-    .replace(/```$/g, '')         // Remove closing code fence
-    .trim();
+  // Check for malformed syntax patterns
+  const hasMalformedSyntax = /(?:javascriptsriptype|parseFloat\('%[di]|'%[ip]'\)|\);\s*\}\s*console)/i.test(trimmedResponse);
+  if (hasMalformedSyntax) {
+    console.log('[extractCodeFromResponse] Response contains malformed syntax');
+    return '';
+  }
   
-  // Remove inline comments from the cleaned text
-  return removeInlineComments(cleaned);
+  // Basic validation: check if it looks like code
+  const hasCodePatterns = /(?:#include|import|function|def|class|public|private|const|let|var|program|\bif\b|\bfor\b|\bwhile\b|\breturn\b|\{|\}|;)/.test(trimmedResponse);
+  
+  if (hasCodePatterns && trimmedResponse.length > 10) {
+    console.log('[extractCodeFromResponse] Treating entire response as code, length:', trimmedResponse.length);
+    return trimmedResponse;
+  }
+  
+  // No code could be extracted
+  console.log('[extractCodeFromResponse] No code could be extracted');
+  return '';
 }
 
 // Helper function to remove inline comments while preserving code

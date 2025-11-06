@@ -1,4 +1,5 @@
 import { createFlowBuilder } from './_common.mjs';
+import { processSingleConditional, processConditionalChain } from './conditional-mapping.mjs';
 
 // Utility function to get text from a node
 function textOf(node) { 
@@ -63,52 +64,10 @@ function processStatements(statements, flow, languageConfig, last, pendingConnec
       continue;
     }
     
-    // Handle conditional statements (recursively)
+    // Handle conditional statements using the dedicated conditional mapping file
     if (languageConfig.isConditional && languageConfig.isConditional(stmt)) {
-      const condInfo = (languageConfig.extractConditionInfo && languageConfig.extractConditionInfo(stmt)) || { text: 'condition' };
-      
-      // Determine if this is an else if statement by checking the context
-      let isElseIf = false;
-      let conditionalText = condInfo.text || 'condition';
-      
-      // Use different shapes for different conditional types
-      let condId;
-      if (stmt.type === 'if_statement' || stmt.type === 'elif_clause') {
-        const labelPrefix = isElseIf ? 'else if' : 'if';
-        condId = isElseIf 
-          ? flow.addElseIfStatement(stmt, `${labelPrefix} ${conditionalText}?`)
-          : flow.addIfStatement(stmt, `${labelPrefix} ${conditionalText}?`);
-      } else if (stmt.type === 'switch_statement' || stmt.type === 'switch_expression') {
-        condId = flow.addSwitchStatement(stmt, `${conditionalText}?`);
-      } else {
-        condId = flow.addDecision(stmt, `${conditionalText}?`);
-      }
-      
-      flow.link(currentLast, condId);
-      
-      // Process then branch
-      const thenInfo = (languageConfig.extractThenBranch && languageConfig.extractThenBranch(stmt)) || { calls: [] };
-      const thenCalls = Array.isArray(thenInfo?.calls) ? thenInfo.calls : [];
-      
-      let thenLast = condId;
-      if (thenCalls.length > 0) {
-        const thenResult = processStatements(thenCalls, flow, languageConfig, thenLast, []);
-        thenLast = thenResult.last;
-      }
-      
-      // Process else branch
-      const elseInfo = (languageConfig.extractElseBranch && languageConfig.extractElseBranch(stmt)) || { calls: [] };
-      const elseCalls = Array.isArray(elseInfo?.calls) ? elseInfo.calls : [];
-      
-      let elseLast = condId;
-      if (elseCalls.length > 0) {
-        const elseResult = processStatements(elseCalls, flow, languageConfig, elseLast, []);
-        elseLast = elseResult.last;
-      }
-      
-      // For nested conditionals, we need to determine the next node
-      // For now, we'll set currentLast to the condition node itself
-      currentLast = condId;
+      const result = processSingleConditional(stmt, flow, languageConfig, currentLast);
+      currentLast = result;
       continue;
     }
     
@@ -161,6 +120,7 @@ function processStatements(statements, flow, languageConfig, last, pendingConnec
     }
     
     // Handle assignments
+    // Assignment and declaration statements should have only one connection from it
     if (languageConfig.isAssignment && languageConfig.isAssignment(stmt)) {
       const varInfo = languageConfig.extractVariableInfo(stmt);
       if (varInfo && (varInfo.name || varInfo.value)) {
@@ -173,6 +133,7 @@ function processStatements(statements, flow, languageConfig, last, pendingConnec
     }
     
     // Handle return statements
+    // Return statements should have only one incoming connection, like assignment statements
     if (languageConfig.isReturnStatement && languageConfig.isReturnStatement(stmt)) {
       const returnInfo = languageConfig.extractReturnInfo(stmt);
       const label = returnInfo.value ? `return ${returnInfo.value}` : 'return';
@@ -301,6 +262,7 @@ export function generateCommonFlowchart(nodes, languageConfig) {
         }
       
         // Handle variable declarations and assignments
+        // Assignment and declaration statements should have only one connection from it
         if (languageConfig.isAssignment && languageConfig.isAssignment(node)) {
           const varInfo = languageConfig.extractVariableInfo ? languageConfig.extractVariableInfo(node) : null;
           if (varInfo && (varInfo.name || varInfo.value)) {
@@ -308,10 +270,10 @@ export function generateCommonFlowchart(nodes, languageConfig) {
             const assignId = flow.addAction(node, label);
             
             // Make connections to this statement
+            // Assignment statements should have only one incoming connection
             if (nextConnections.length > 0) {
-              for (const conn of nextConnections) {
-                flow.link(conn.from, assignId, conn.label);
-              }
+              // Connect only from the last node, not from all pending connections
+              flow.link(last, assignId);
             } else {
               flow.link(last, assignId);
             }
@@ -356,11 +318,15 @@ export function generateCommonFlowchart(nodes, languageConfig) {
         }
         
         // Handle return statements
+        // Return statements should have only one incoming connection, like assignment statements
         if (languageConfig.isReturnStatement && languageConfig.isReturnStatement(node)) {
           const returnInfo = languageConfig.extractReturnInfo ? languageConfig.extractReturnInfo(node) : { value: '' };
           const label = returnInfo.value ? `return ${returnInfo.value}` : 'return';
           const returnId = flow.addReturnStatement(node, label);
+          // Make connections to this statement
+          // Return statements should have only one incoming connection
           if (nextConnections.length > 0) {
+            // Connect all pending next connections to this return statement
             for (const conn of nextConnections) {
               flow.link(conn.from, returnId, conn.label);
             }
@@ -375,11 +341,10 @@ export function generateCommonFlowchart(nodes, languageConfig) {
           continue;
         }
         
-        // Handle conditional statements
+        // Handle conditional statements using the dedicated conditional mapping file
         if (languageConfig.isConditional && languageConfig.isConditional(node)) {
-          // Special handling for switch statements
+          // Handle switch statements specially
           if (node.type === 'switch_statement' || node.type === 'match_statement' || node.type === 'switch_expression') {
-            // Handle switch statements specially - process the body directly
             const condInfo = (languageConfig.extractConditionInfo && languageConfig.extractConditionInfo(node)) || { text: 'condition' };
             const switchId = flow.addSwitchStatement(node, `${condInfo.text || 'condition'}?`);
             flow.link(last, switchId);
@@ -916,215 +881,65 @@ export function generateCommonFlowchart(nodes, languageConfig) {
             continue;
           }
           
-          // Handle regular if/else statements with full recursive processing
-          const condInfo = (languageConfig.extractConditionInfo && languageConfig.extractConditionInfo(node)) || { text: 'condition' };
+          // Handle if/else if/else chains by detecting nested structures
+          // Check if this is the start of a conditional chain
+          const conditionalChain = [node];
+          let currentElseClause = node.children?.find(c => c.type === 'else_clause');
           
-          // Determine if this is an else if statement by checking the context
-          let isElseIf = false;
-          let conditionalText = condInfo.text || 'condition';
+          // Look for nested else if and else statements
+          while (currentElseClause) {
+            const nestedIf = currentElseClause.children?.find(c => c.type === 'if_statement');
+            if (nestedIf) {
+              conditionalChain.push(nestedIf);
+              // Look for the next else clause within this nested if
+              currentElseClause = nestedIf.children?.find(c => c.type === 'else_clause');
+            } else {
+              // This is a final else clause (not else if)
+              const elseBlock = currentElseClause.children?.find(c => 
+                c.type === 'statement_block' || 
+                c.type === 'expression_statement' ||
+                c.type === 'block'
+              );
+              if (elseBlock) {
+                // Add the else block as a special node in our chain
+                conditionalChain.push({
+                  type: 'else_clause',
+                  children: [elseBlock],
+                  text: 'else'
+                });
+              }
+              break;
+            }
+          }
           
-          // Check if this is part of an else if chain
-          // For different languages, we need different approaches:
-          
-          // For Python, check if this is an elif_clause
-          if (node.type === 'elif_clause') {
-            isElseIf = true;
-            conditionalText = `else if ${conditionalText}`;
-          } 
-          // For C/C++/Java/JavaScript, check the parent structure
-          else if (node.parent && node.parent.type === 'else_clause') {
-            // This is nested inside an else clause, so it's an else if
-            isElseIf = true;
-            conditionalText = `else if ${conditionalText}`;
-          } 
-          // For Java-style else if (sibling structure), check previous sibling
-          else {
-            // Check if this node has a previous sibling that is an 'else' keyword
-            const nodeIndex = candidateNodes.indexOf(node);
-            if (nodeIndex > 0) {
-              const previousNode = candidateNodes[nodeIndex - 1];
-              if (previousNode && previousNode.type === 'else') {
-                isElseIf = true;
-                conditionalText = `else if ${conditionalText}`;
+          // Process the conditional chain
+          if (conditionalChain.length > 1) {
+            // Use the chain processing function
+            const chainResult = processConditionalChain(conditionalChain, flow, languageConfig, last, pendingConnections);
+            last = chainResult.last;
+            pendingConnections.push(...chainResult.pendingConnections);
+            // Mark all nodes in the chain as processed
+            for (const chainNode of conditionalChain) {
+              if (chainNode && chainNode.type !== 'else_clause') { // else_clause is our synthetic node
+                processedNodes.add(chainNode);
               }
             }
-          }
-          
-          // Use different shapes for different conditional types
-          let condId;
-          if (node.type === 'if_statement' || node.type === 'elif_clause') {
-            const labelPrefix = isElseIf ? 'else if' : 'if';
-            condId = isElseIf 
-              ? flow.addElseIfStatement(node, `${labelPrefix} ${conditionalText}?`)
-              : flow.addIfStatement(node, `${labelPrefix} ${conditionalText}?`);
-          } else if (node.type === 'switch_statement') {
-            condId = flow.addSwitchStatement(node, `${conditionalText}?`);
+            continue;
           } else {
-            condId = flow.addDecision(node, `${conditionalText}?`);
+            // Single conditional statement
+            const result = processSingleConditional(node, flow, languageConfig, last);
+            // For single conditionals, we need to handle the pending connections properly
+            // The result should include both the last node and any pending connections
+            if (typeof result === 'object' && result.last && result.pendingConnections) {
+              last = result.last;
+              pendingConnections.push(...result.pendingConnections);
+            } else {
+              // Fallback for backward compatibility
+              last = result;
+            }
+            processedNodes.add(node);
+            continue;
           }
-          
-          flow.link(last, condId);
-          
-          // Process then branch (if block) with full recursive processing
-          const thenInfo = (languageConfig.extractThenBranch && languageConfig.extractThenBranch(node)) || { calls: [] };
-          const thenCalls = Array.isArray(thenInfo?.calls) ? thenInfo.calls : [];
-          
-          if (thenCalls.length > 0) {
-            const thenResult = processStatements(thenCalls, flow, languageConfig, condId, []);
-            // Connect the end of then branch back to the condition for else processing
-            flow.link(thenResult.last, condId, 'no');
-          }
-        
-          // Process else/elif branches with full recursive processing
-          const elseInfo = (languageConfig.extractElseBranch && languageConfig.extractElseBranch(node)) || { calls: [] };
-          let elseCalls = Array.isArray(elseInfo?.calls) ? elseInfo.calls : [];
-          
-          // Check for elif clauses (Python) or else if statements (JavaScript)
-          const elifClauses = node.children ? node.children.filter(c => c && c.type === 'elif_clause') : [];
-          const elseClause = node.children ? node.children.find(c => c && c.type === 'else_clause') : null;
-          
-          // Check for nested if statements in else clauses (C, C++, Java)
-          let nestedIfStatement = null;
-          if (elseClause && elseClause.children) {
-            // Look for an if_statement directly in the else clause (C-style else if)
-            nestedIfStatement = elseClause.children.find(c => c && c.type === 'if_statement');
-          } else {
-            // For Java-style else if, look for else and if_statement as siblings
-            const elseIndex = node.children ? node.children.findIndex(c => c && c.type === 'else') : -1;
-            const ifIndex = node.children ? node.children.findIndex(c => c && c.type === 'if_statement') : -1;
-            if (elseIndex !== -1 && ifIndex !== -1 && ifIndex > elseIndex) {
-              // The if_statement that comes after else is our nested if
-              nestedIfStatement = node.children[ifIndex];
-              
-              // For Java-style else if, we need to handle the else branch of the nested if
-              // The actual else branch (final else) is in the innermost nested if statement
-              if (nestedIfStatement) {
-                // Find the final else clause in the nested structure
-                let currentNested = nestedIfStatement;
-                while (currentNested) {
-                  // First try to find else_clause (standard approach)
-                  const currentElseClause = currentNested.children ? currentNested.children.find(c => c && c.type === 'else_clause') : null;
-                  if (currentElseClause) {
-                    // Extract calls from the else clause
-                    const elseBlock = currentElseClause.children.find(c => c && (c.type === 'block' || c.type === 'compound_statement'));
-                    const calls = elseBlock ? findAll(elseBlock, 'method_invocation') : [];
-                    elseCalls = calls;
-                    break;
-                  }
-                  
-                  // For Java, also check for else keyword followed by a block (sibling structure)
-                  const elseIndex = currentNested.children ? currentNested.children.findIndex(c => c && c.type === 'else') : -1;
-                  if (elseIndex !== -1 && elseIndex + 1 < currentNested.children.length) {
-                    // The element after 'else' should be the block
-                    const blockNode = currentNested.children[elseIndex + 1];
-                    if (blockNode && (blockNode.type === 'block' || blockNode.type === 'compound_statement')) {
-                      // Extract calls from the block
-                      // For Java, we look for method_invocation nodes
-                      const calls = findAll(blockNode, 'method_invocation');
-                      elseCalls = calls;
-                      break;
-                    }
-                  }
-                  
-                  // Look for another nested if
-                  const nextElseIndex = currentNested.children ? currentNested.children.findIndex(c => c && c.type === 'else') : -1;
-                  const nextIfIndex = currentNested.children ? currentNested.children.findIndex(c => c && c.type === 'if_statement') : -1;
-                  if (nextElseIndex !== -1 && nextIfIndex !== -1 && nextIfIndex > nextElseIndex) {
-                    currentNested = currentNested.children[nextIfIndex];
-                  } else {
-                    currentNested = null;
-                  }
-                }
-              }
-            }
-          }
-          
-          // Process elif clauses first (Python)
-          let currentCondId = condId;
-          
-          for (const elifClause of elifClauses) {
-            // Extract condition from elif clause
-            const conditionNode = elifClause.children.find(c => c && c.type === 'comparison_operator');
-            const elifConditionText = conditionNode ? textOf(conditionNode) : 'condition';
-            
-            // Create elif node
-            const elifId = flow.addElseIfStatement(elifClause, `else if ${elifConditionText}?`);
-            flow.link(currentCondId, elifId, 'no');
-            
-            // Process elif body with full recursive processing
-            const blockNode = elifClause.children.find(c => c && c.type === 'block');
-            const elifCalls = blockNode ? findAll(blockNode, 'call') : [];
-            
-            if (elifCalls.length > 0) {
-              const elifResult = processStatements(elifCalls, flow, languageConfig, elifId, []);
-              // Connect the end of elif branch back for further else processing
-              flow.link(elifResult.last, elifId, 'no');
-            }
-            
-            currentCondId = elifId;
-          }
-
-          // Process nested if statements in else clauses (C, C++, Java, JavaScript)
-          if (nestedIfStatement) {
-            // Process the nested if statement recursively
-            const nestedCondInfo = (languageConfig.extractConditionInfo && languageConfig.extractConditionInfo(nestedIfStatement)) || { text: 'condition' };
-            const nestedConditionalText = nestedCondInfo.text || 'condition';
-            
-            // This is definitely an else if since it's nested in an else clause
-            const nestedCondId = flow.addElseIfStatement(nestedIfStatement, `else if ${nestedConditionalText}?`);
-            flow.link(currentCondId, nestedCondId, 'no');
-            
-            // Process then branch of nested if with full recursive processing
-            const nestedThenInfo = (languageConfig.extractThenBranch && languageConfig.extractThenBranch(nestedIfStatement)) || { calls: [] };
-            const nestedThenCalls = Array.isArray(nestedThenInfo?.calls) ? nestedThenInfo.calls : [];
-            
-            if (nestedThenCalls.length > 0) {
-              const nestedThenResult = processStatements(nestedThenCalls, flow, languageConfig, nestedCondId, []);
-              // Connect the end of nested then branch back for else processing
-              flow.link(nestedThenResult.last, nestedCondId, 'no');
-            }
-            
-            // Process else branch of nested if with full recursive processing
-            const nestedElseInfo = (languageConfig.extractElseBranch && languageConfig.extractElseBranch(nestedIfStatement)) || { calls: [] };
-            let nestedElseCalls = Array.isArray(nestedElseInfo?.calls) ? nestedElseInfo.calls : [];
-            
-            // For Java-style else, we need to manually extract calls
-            if (nestedElseCalls.length === 0) {
-              // Try to find else keyword followed by a block
-              const elseIndex = nestedIfStatement.children ? nestedIfStatement.children.findIndex(c => c && c.type === 'else') : -1;
-              if (elseIndex !== -1 && elseIndex + 1 < nestedIfStatement.children.length) {
-                const blockNode = nestedIfStatement.children[elseIndex + 1];
-                if (blockNode && (blockNode.type === 'block' || blockNode.type === 'compound_statement')) {
-                  // Extract calls from the block
-                  // For Java, we look for method_invocation nodes
-                  // For JavaScript, we look for call_expression nodes
-                  const methodInvocationCalls = findAll(blockNode, 'method_invocation');
-                  const callExpressionCalls = findAll(blockNode, 'call_expression');
-                  const callNodes = [...methodInvocationCalls, ...callExpressionCalls];
-                  nestedElseCalls = callNodes;
-                }
-              }
-            }
-            
-            if (nestedElseCalls.length > 0) {
-              const nestedElseResult = processStatements(nestedElseCalls, flow, languageConfig, nestedCondId, []);
-              // Connect the end of nested else branch to continue the flow
-              flow.link(nestedElseResult.last, nestedCondId, 'yes');
-            }
-          } else {
-            // Process else clause for non-nested cases with full recursive processing
-            if (elseCalls.length > 0) {
-              const elseResult = processStatements(elseCalls, flow, languageConfig, currentCondId, []);
-              // Connect the end of else branch to continue the flow
-              flow.link(elseResult.last, currentCondId, 'yes');
-            }
-          }
-          
-          // For conditional statements, we don't update 'last' because conditionals don't have a single end point
-          // All branches will connect to the next statement through pendingConnections
-          // We keep 'last' pointing to the previous node to avoid creating extra connections
-          processedNodes.add(node);
-          continue;
         }
       
         // Handle loops with full recursive processing
@@ -1266,7 +1081,9 @@ export function generateCommonFlowchart(nodes, languageConfig) {
     
     // Make pending connections to end node
     for (const pending of pendingConnections) {
-      flow.link(pending, end);
+      if (pending && pending.from) {
+        flow.link(pending.from, end, pending.label);
+      }
     }
     
     // Only link last to end if there are no pending connections

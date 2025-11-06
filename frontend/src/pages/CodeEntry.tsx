@@ -1,76 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Box, Button, Typography, Paper, TextField, IconButton } from '@mui/material';
+import { Box, Button, Typography, Paper, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 import Editor from '@monaco-editor/react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import BackButton from '../components/BackButton';
 import { convertCodeToMermaid, detectLanguageLocal, detectLanguageAPI } from '../services/api';
-import { FaPaperPlane } from 'react-icons/fa'; // Using react-icons instead
 import { styled } from '@mui/material/styles';
 
-const ChatContainer = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  flexDirection: 'column',
-  height: '400px',
-  border: '1px solid #333',
-  borderRadius: '8px',
-  backgroundColor: '#1e1e1e',
-  overflow: 'hidden'
-}));
-
-const ChatMessages = styled(Box)(({ theme }) => ({
-  flexGrow: 1,
-  overflowY: 'auto',
-  padding: theme.spacing(2),
-  display: 'flex',
-  flexDirection: 'column',
-  gap: theme.spacing(2)
-}));
-
-const ChatMessage = styled(Box)(({ theme }) => ({
-  maxWidth: '80%',
-  padding: theme.spacing(1.5),
-  borderRadius: '8px',
-  '&.user': {
-    alignSelf: 'flex-end',
-    backgroundColor: '#007acc',
-    color: 'white'
-  },
-  '&.ai': {
-    alignSelf: 'flex-start',
-    backgroundColor: '#333',
-    color: 'white'
-  }
-}));
-
-const ChatInputContainer = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  padding: theme.spacing(1),
-  borderTop: '1px solid #333',
-  backgroundColor: '#2d2d30'
-}));
+type LanguageType = 'select' | 'js' | 'ts' | 'python' | 'java' | 'c' | 'cpp' | 'pascal' | 'fortran';
 
 const CodeEntry: React.FC = () => {
     const [inputCode, setInputCode] = useState('');
     const [outputCode, setOutputCode] = useState('');
-    // language selection removed; auto-detection is used
+    const [selectedLanguage, setSelectedLanguage] = useState<LanguageType>('select');
     const navigate = useNavigate();
     const location = useLocation();
     const inputEditorRef = useRef<any>(null);
     const outputEditorRef = useRef<any>(null);
-    const [chatMessages, setChatMessages] = useState<Array<{role: string, content: string}>>([]);
-    const chatMessagesRef = useRef<HTMLDivElement>(null);
-
-    const [detectedLanguage, setDetectedLanguage] = useState<null | 'js' | 'ts' | 'python' | 'java' | 'c' | 'cpp' | 'no language detected'>(null);
-    // For API calls, we need a separate state with only valid language codes
-    const [languageForConversion, setLanguageForConversion] = useState<null | 'js' | 'ts' | 'python' | 'java' | 'c' | 'cpp'>(null);
-    const [isDetecting, setIsDetecting] = useState(false);
-
-    // Auto-scroll chat to bottom
-    useEffect(() => {
-        if (chatMessagesRef.current) {
-            chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
-        }
-    }, [chatMessages]);
 
     // Handle incoming code from WriteWithAI page
     useEffect(() => {
@@ -80,62 +25,6 @@ const CodeEntry: React.FC = () => {
         }
     }, [location.state]);
 
-    useEffect(() => {
-        const code = inputCode.trim();
-        const timer = setTimeout(() => {
-            if (!code) {
-                setDetectedLanguage(null);
-                setLanguageForConversion(null);
-            } else {
-                // First try fast local detection for immediate feedback
-                const localDetected = detectLanguageLocal(code);
-                setDetectedLanguage(localDetected);
-                
-                // Then use API detection for more accurate results
-                const apiDetect = async () => {
-                    setIsDetecting(true);
-                    try {
-                        const apiDetected = await detectLanguageAPI(code);
-                        // Map API response to our expected types
-                        const mappedLanguage = apiDetected === 'javascript' ? 'js' : 
-                                             apiDetected === 'typescript' ? 'ts' : 
-                                             apiDetected === 'python' ? 'python' : 
-                                             apiDetected === 'java' ? 'java' : 
-                                             apiDetected === 'c' ? 'c' : 
-                                             apiDetected === 'cpp' ? 'cpp' : 
-                                             'no language detected';
-                        
-                        setDetectedLanguage(mappedLanguage);
-                        // Set language for conversion API calls (only valid language codes)
-                        if (mappedLanguage === 'js' || mappedLanguage === 'ts' || mappedLanguage === 'python' || 
-                            mappedLanguage === 'java' || mappedLanguage === 'c' || mappedLanguage === 'cpp') {
-                            setLanguageForConversion(mappedLanguage);
-                        } else {
-                            setLanguageForConversion(null);
-                        }
-                    } catch (error) {
-                        // If API detection fails, fall back to local detection
-                        console.warn('API language detection failed, falling back to local detection:', error);
-                        const localDetected = detectLanguageLocal(code);
-                        setDetectedLanguage(localDetected);
-                        // Set language for conversion API calls (only valid language codes)
-                        if (localDetected === 'js' || localDetected === 'ts' || localDetected === 'python' || 
-                            localDetected === 'java' || localDetected === 'c' || localDetected === 'cpp') {
-                            setLanguageForConversion(localDetected);
-                        } else {
-                            setLanguageForConversion(null);
-                        }
-                    } finally {
-                        setIsDetecting(false);
-                    }
-                };
-                
-                apiDetect();
-            }
-        }, 300); // Reduced delay for better responsiveness
-        return () => clearTimeout(timer);
-    }, [inputCode]);
-
     const getEditorLanguage = (): string => {
         const map: Record<string, string> = {
             js: 'javascript',
@@ -144,9 +33,10 @@ const CodeEntry: React.FC = () => {
             java: 'java',
             c: 'c',
             cpp: 'cpp',
+            pascal: 'pascal',
+            fortran: 'fortran'
         };
-        if (!detectedLanguage) return 'plaintext';
-        return map[detectedLanguage] || 'plaintext';
+        return map[selectedLanguage] || 'plaintext';
     };
 
     const addColorsToMermaid = (mermaidCode: string): string => {
@@ -218,10 +108,65 @@ const CodeEntry: React.FC = () => {
     const handleConvert = async () => {
         const code = inputCode.trim();
         if (!code) return;
+        
+        // Check if a language is selected
+        if (selectedLanguage === 'select') {
+            setOutputCode('// Error: Please select a language before converting');
+            return;
+        }
+        
         try {
+            // Detect the actual language of the code
+            let detectedLanguage: string | null = detectLanguageLocal(code);
+            if (!detectedLanguage || detectedLanguage === 'no language detected') {
+                try {
+                    detectedLanguage = await detectLanguageAPI(code);
+                } catch (error) {
+                    console.warn('API language detection failed:', error);
+                }
+            }
+            
+            // Normalize detected language
+            let normalizedDetected: LanguageType | 'no language detected' = detectedLanguage as LanguageType;
+            if (detectedLanguage === 'javascript') {
+                normalizedDetected = 'js';
+            } else if (detectedLanguage === 'typescript') {
+                normalizedDetected = 'ts';
+            } else if (detectedLanguage === 'pascal') {
+                normalizedDetected = 'pascal';
+            } else if (detectedLanguage === 'fortran') {
+                normalizedDetected = 'fortran';
+            } else if (detectedLanguage === 'python') {
+                normalizedDetected = 'python';
+            } else if (detectedLanguage === 'java') {
+                normalizedDetected = 'java';
+            } else if (detectedLanguage === 'c') {
+                normalizedDetected = 'c';
+            } else if (detectedLanguage === 'cpp') {
+                normalizedDetected = 'cpp';
+            } else if (detectedLanguage === 'no language detected') {
+                normalizedDetected = 'no language detected';
+            }
+            
+            // Check if selected language matches detected language
+            const languageMismatch = 
+                (selectedLanguage === 'js' && normalizedDetected !== 'js') ||
+                (selectedLanguage === 'ts' && normalizedDetected !== 'ts') ||
+                (selectedLanguage === 'python' && normalizedDetected !== 'python') ||
+                (selectedLanguage === 'java' && normalizedDetected !== 'java') ||
+                (selectedLanguage === 'c' && normalizedDetected !== 'c') ||
+                (selectedLanguage === 'cpp' && normalizedDetected !== 'cpp') ||
+                (selectedLanguage === 'pascal' && normalizedDetected !== 'pascal') ||
+                (selectedLanguage === 'fortran' && normalizedDetected !== 'fortran');
+            
+            if (languageMismatch && normalizedDetected && normalizedDetected !== 'no language detected') {
+                setOutputCode(`// Error: The selected language (${selectedLanguage}) does not match the detected language (${normalizedDetected}) of your code. Please select the correct language.`);
+                return;
+            }
+            
             setOutputCode('// Converting to Mermaid...');
-            // send detected language to backend for consistent conversion
-            const mermaid = await convertCodeToMermaid(code, languageForConversion || 'auto');
+            // send selected language to backend for conversion
+            const mermaid = await convertCodeToMermaid(code, selectedLanguage as any);
             // Don't add colors here - keep the code clean for editing
             setOutputCode(mermaid || '');
         } catch (e: any) {
@@ -260,13 +205,31 @@ const CodeEntry: React.FC = () => {
                                 Input Programming Code
                             </Typography>
                             <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                <FormControl sx={{ minWidth: 120 }} size="small">
+                                    <InputLabel>Language</InputLabel>
+                                    <Select
+                                        value={selectedLanguage}
+                                        label="Language"
+                                        onChange={(e) => setSelectedLanguage(e.target.value as LanguageType)}
+                                    >
+                                        <MenuItem value="select">Select a language</MenuItem>
+                                        <MenuItem value="js">JavaScript</MenuItem>
+                                        <MenuItem value="ts">TypeScript</MenuItem>
+                                        <MenuItem value="python">Python</MenuItem>
+                                        <MenuItem value="java">Java</MenuItem>
+                                        <MenuItem value="c">C</MenuItem>
+                                        <MenuItem value="cpp">C++</MenuItem>
+                                        <MenuItem value="pascal">Pascal</MenuItem>
+                                        <MenuItem value="fortran">Fortran</MenuItem>
+                                    </Select>
+                                </FormControl>
                                 <Button
                                     variant="outlined"
                                     size="small"
                                     onClick={() => {
                                         const input = document.createElement('input');
                                         input.type = 'file';
-                                        input.accept = '.js,.ts,.jsx,.tsx,.py,.java,.cpp,.c,.cs,.php,.rb,.go,.rs,.kt,.swift';
+                                        input.accept = '.js,.ts,.jsx,.tsx,.py,.java,.cpp,.c,.cs,.php,.rb,.go,.rs,.kt,.swift,.pas,.f,.f90,.f95';
                                         input.onchange = (e) => {
                                             const file = (e.target as HTMLInputElement).files?.[0];
                                             if (file) {
@@ -289,17 +252,6 @@ const CodeEntry: React.FC = () => {
                                 >
                                     AI
                                 </Button>
-                                <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                                    Detected: {isDetecting ? 'detecting...' : (detectedLanguage ? ({
-                                        js: 'JavaScript',
-                                        ts: 'TypeScript',
-                                        python: 'Python',
-                                        java: 'Java',
-                                        c: 'C',
-                                        cpp: 'C++',
-                                        'no language detected': 'no language detected'
-                                    } as any)[detectedLanguage] : 'no language detected')}
-                                </Typography>
                             </Box>
                         </Box>
                         <Editor

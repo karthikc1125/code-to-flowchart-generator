@@ -1,48 +1,33 @@
 {
-  "version": "2.1.0",
-  "description": "Enhanced AI instructions for code explanation and generation",
-  
-  "tasks": {
-    "code_explanation": {
-      "objective": "Provide clear, concise code explanations in structured markdown format",
-      "structure": [
-        "Code Overview"
-      ],
-      "rules": [
-        "Use markdown formatting with clear headings",
-        "Keep explanations concise - one or two sentences per point",
-        "Focus on key functionality and purpose",
-        "Explain functions, classes, and key constructs briefly",
-        "Describe control structures clearly and simply",
-        "Highlight important patterns and design decisions",
-        "Include time/space complexity when relevant",
-        "NO comments in the output, only structured markdown",
-        "Focus on clarity rather than comprehensive detail"
-      ]
-    },
-    
-    "code_generation": {
-      "objective": "Generate clean, executable code without any explanatory text",
-      "rules": [
-        "ONLY generate raw code, NO explanations or comments",
-        "Ensure syntactically correct and fully executable code",
-        "Generate only what is specifically requested",
-        "Do not add extra code not requested",
-        "Ensure proper syntax and structure"
-      ],
-      "languages": {
-        "python": "PEP 8 compliant, use f-strings, type hints, and modern Python features",
-        "javascript": "ES6+ syntax, use const/let, arrow functions, async/await, modules",
-        "typescript": "Strict typing, interfaces, generics, modern TS features",
-        "java": "Proper OOP structure, access modifiers, exception handling, Java 11+ features",
-        "c": "ANSI C standard, K&R style, proper memory management, includes",
-        "cpp": "Modern C++17+, STL containers, smart pointers, RAII principles"
-      }
-    }
+  "version": "1.1.0",
+  "description": "Plain-text code explanation only. No flowcharts. No terminal-style output.",
+  "task": "explain_code",
+  "output_format": "plain_text",
+  "style": {
+    "headings": [],
+    "bullets": false,
+    "concise": true
   },
-  
-  "output": {
-    "explain": "Structured markdown with clear sections, NO comments in output",
-    "generate": "Raw executable code only, NO comments or explanations"
+  "rules": [
+    "Identify the likely programming language on the first line as: Language: <Name>",
+    "Explain based strictly on the given code; do not invent behavior",
+    "No flowcharts, no Mermaid, no ASCII diagrams, no terminal prompts",
+    "Use short, simple sentences (no headings, no lists, no bullets)",
+    "List important keywords/constructs and what they do in this code",
+    "Use simple words so a 10-year-old can understand",
+    "If something is ambiguous or missing, say so explicitly"
+  ],
+  "template": {
+    "Program Type": [
+      "Language: <Name>",
+      "What kind of program/snippet it is and its likely purpose"
+    ],
+    "Flow of Execution": [
+      "Step-by-step of what runs in order"
+    ],
+    
+    "Summary": [
+      "One or two sentences summarizing what the code accomplishes"
+    ]
   }
 }

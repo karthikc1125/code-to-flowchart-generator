@@ -364,72 +364,38 @@ ${response}
     const extractCodeFromResponse = (text: string): string => {
         if (!text) return '';
         
-        console.log('[WriteWithAI] Attempting to extract code from response:', text.substring(0, 200) + '...');
+        console.log('[WriteWithAI] Attempting to extract code from response, length:', text.length);
+        console.log('[WriteWithAI] First 200 chars:', text.substring(0, 200));
         
-        // Method 1: Extract code from markdown code blocks (prioritizing ``` delimiters)
-        // Simple approach to avoid TypeScript errors
-        const codeBlockMatches = text.match(/```(?:[a-zA-Z]+)?\n([\s\S]*?)```/);
-        if (codeBlockMatches && codeBlockMatches[1]) {
-            console.log('[WriteWithAI] Found code block with ``` delimiters');
-            return codeBlockMatches[1].trim();
+        // Method 1: Extract code from ``` delimiters if present
+        const codeBlockRegex = /```(?:[a-zA-Z0-9]+)?\s*\n([\s\S]*?)\n```/;
+        const match = text.match(codeBlockRegex);
+        
+        if (match && match[1]) {
+            const extractedCode = match[1].trim();
+            console.log('[WriteWithAI] Extracted code from ``` delimiters, length:', extractedCode.length);
+            return extractedCode;
         }
         
-        // Method 2: Handle cases where code might be wrapped in single backticks
-        const inlineCodeMatches = text.match(/`([^`]+)`/);
-        if (inlineCodeMatches && inlineCodeMatches[1] && inlineCodeMatches[1].includes('\n')) {
-            console.log('[WriteWithAI] Found code in single backticks');
-            return inlineCodeMatches[1].trim();
+        // Method 2: If no delimiters, check if response looks like code
+        const trimmedText = text.trim();
+        
+        // Check if it's an error message
+        if (trimmedText.startsWith('//') && trimmedText.includes('Error:')) {
+            console.log('[WriteWithAI] Response is an error message');
+            return trimmedText;  // Return error as-is
         }
         
-        // Method 3: Try to find any text that looks like code (more permissive)
-        // Look for common code patterns
-        const lines = text.split('\n');
-        let codeStartIndex = -1;
-        let codeEndIndex = -1;
+        // Check if it looks like code (has code patterns)
+        const hasCodePatterns = /(?:#include|import|function|def|class|public|private|const|let|var|program|\bif\b|\bfor\b|\bwhile\b|\breturn\b|\{|\}|;)/.test(trimmedText);
         
-        // Find the first line that looks like code
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
-            // Check for common code patterns
-            if (line.match(/^(\s*)(function|def|class|public|private|protected|static|const|let|var|interface|type|#include|import|from|console\.log|print\(|printf\(|scanf\(|\bif\b|\bfor\b|\bwhile\b|\breturn\b|\w+\s*\([^)]*\)\s*\{|^[^{]*\{)/)) {
-                codeStartIndex = i;
-                break;
-            }
+        if (hasCodePatterns && trimmedText.length > 10) {
+            console.log('[WriteWithAI] Treating entire response as code');
+            return trimmedText;
         }
         
-        // If we found a start, try to find the end
-        if (codeStartIndex !== -1) {
-            // Look for the end of the code block
-            for (let i = codeStartIndex; i < lines.length; i++) {
-                const line = lines[i];
-                // End when we hit an empty line followed by non-code text
-                if (line.trim() === '' && i + 1 < lines.length && 
-                    !lines[i + 1].match(/^(\s*)(function|def|class|public|private|protected|static|const|let|var|interface|type|#include|import|from|console\.log|print\(|printf\(|scanf\(|\bif\b|\bfor\b|\bwhile\b|\breturn\b|\w+\s*\([^)]*\)\s*\{|^[^{]*\{)/)) {
-                    codeEndIndex = i;
-                    break;
-                }
-                codeEndIndex = i;
-            }
-            
-            if (codeEndIndex >= codeStartIndex) {
-                console.log('[WriteWithAI] Found code using pattern matching');
-                const codeLines = lines.slice(codeStartIndex, codeEndIndex + 1);
-                return codeLines.join('\n').trim();
-            }
-        }
-        
-        // Method 4: Last resort - if we have a substantial amount of text, 
-        // and it doesn't look like an error message, return it as is
-        if (text.trim().length > 50 && 
-            !text.includes('Error') && 
-            !text.includes('error') && 
-            !text.includes('Exception')) {
-            console.log('[WriteWithAI] Returning text as fallback');
-            return text.trim();
-        }
-        
-        // Last resort: return empty as we couldn't reliably extract code
-        console.log('[WriteWithAI] No code could be extracted');
+        // No valid code found
+        console.log('[WriteWithAI] No valid code could be extracted');
         return '';
     };
 
@@ -441,8 +407,17 @@ ${response}
     };
 
     const handleCopyToCodeEntry = () => {
-        if (generatedCode && !generatedCode.startsWith('//')) {
+        // Check if we have valid code (not empty and not an error message)
+        const isValidCode = generatedCode && 
+                           generatedCode.trim().length > 0 && 
+                           !generatedCode.startsWith('//') && 
+                           !generatedCode.includes('Error:');
+        
+        if (isValidCode) {
+            console.log('[WriteWithAI] Copying code to Code Entry, length:', generatedCode.length);
             navigate('/code-entry', { state: { code: generatedCode } });
+        } else {
+            console.warn('[WriteWithAI] Cannot copy - invalid or error code');
         }
     };
 
@@ -609,7 +584,13 @@ ${response}
                         color="secondary"
                         size="large"
                         onClick={handleCopyToCodeEntry}
-                        disabled={!generatedCode.trim() || generatedCode.startsWith('//')}
+                        disabled={
+                            !generatedCode || 
+                            generatedCode.trim().length === 0 || 
+                            generatedCode.startsWith('//') || 
+                            generatedCode.includes('Error:') ||
+                            generating
+                        }
                         sx={{ minWidth: 200 }}
                     >
                         Copy to Code Entry

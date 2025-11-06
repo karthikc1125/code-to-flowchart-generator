@@ -102,12 +102,18 @@ export const cConfig = {
     }
     // Handle declaration with initializer
     if (node.type === 'declaration') {
+      // Extract the full declaration text to include type information
+      const typeNode = node.children.find(c => c && (c.type === 'primitive_type' || c.type === 'sized_type_specifier'));
       const initDeclarator = node.children.find(c => c && c.type === 'init_declarator');
       if (initDeclarator) {
         const name = getVariableName(initDeclarator.children.find(c => c && c.type === 'identifier'));
-        const valueNode = initDeclarator.children.find(c => c && c.type === 'integer_literal');
+        // Extract the actual value instead of using default 'value'
+        const valueNode = initDeclarator.children.find(c => c && (c.type === 'integer_literal' || c.type === 'number_literal' || c.type === 'string_literal'));
         const value = valueNode ? textOf(valueNode) : 'value';
-        return { name, value };
+        // Include type information in the name
+        const typeName = typeNode ? textOf(typeNode) : '';
+        const fullName = typeName ? `${typeName} ${name}` : name;
+        return { name: fullName, value };
       }
     }
     return null;
@@ -246,10 +252,13 @@ export const cConfig = {
       return { calls: [] };
     }
     
-    // Handle regular if statements
+    // Handle regular if statements - return ALL statements from the body, not just calls
     const thenBlock = node.children.find(c => c && (c.type === 'compound_statement'));
-    const calls = thenBlock ? findAll(thenBlock, 'call_expression') : [];
-    return { calls };
+    if (thenBlock && thenBlock.children) {
+      // Return all child statements from the block for recursive processing
+      return { calls: thenBlock.children.filter(c => c && c.type !== '{' && c.type !== '}') };
+    }
+    return { calls: [] };
   },
 
   extractElseBranch(node) {
@@ -259,9 +268,22 @@ export const cConfig = {
       return { calls: [] };
     }
     
+    // Handle else clause - return ALL statements from the body, not just calls
     const elseBlock = node.children.find(c => c && c.type === 'else_clause');
-    const calls = elseBlock ? findAll(elseBlock, 'call_expression') : [];
-    return { calls };
+    if (elseBlock && elseBlock.children) {
+      // Find the compound statement or if_statement within the else clause
+      const compoundStmt = elseBlock.children.find(c => c && c.type === 'compound_statement');
+      const ifStmt = elseBlock.children.find(c => c && c.type === 'if_statement');
+      
+      if (compoundStmt && compoundStmt.children) {
+        // Return all child statements from the block for recursive processing
+        return { calls: compoundStmt.children.filter(c => c && c.type !== '{' && c.type !== '}') };
+      } else if (ifStmt) {
+        // Return the if statement for recursive processing
+        return { calls: [ifStmt] };
+      }
+    }
+    return { calls: [] };
   },
 
   isLoop(node) {

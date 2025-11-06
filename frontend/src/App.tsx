@@ -5,6 +5,7 @@ import CodeEntry from './pages/CodeEntry';
 import MermaidEditor from './pages/MermaidEditor';
 import Analysis from './pages/Analysis';
 import WriteWithAI from './pages/WriteWithAI';
+import Instructions from './pages/Instructions';
 import { ThemeProvider } from './components/ThemeProvider';
 
 const App: React.FC = () => {
@@ -13,6 +14,7 @@ const App: React.FC = () => {
       <Router>
         <Routes>
           <Route path="/" element={<Welcome />} />
+          <Route path="/instructions" element={<Instructions />} />
           <Route path="/code-entry" element={<CodeEntry />} />
           <Route path="/mermaid-editor" element={<MermaidEditor />} />
           <Route path="/analysis" element={<Analysis />} />
@@ -23,4 +25,4 @@ const App: React.FC = () => {
   );
 };
 
-export default App; 
+export default App;

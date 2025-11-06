@@ -1,0 +1,74 @@
+{
+  "version": "2.0.0",
+  "description": "CRITICAL: Every response MUST start with ``` and end with ```. No exceptions.",
+  "task": "generate_code",
+  "output_format": "code_block_only",
+  "mandatory_format": {
+    "line_1": "```<language> (EXACTLY this, nothing else on this line)",
+    "line_2_to_n": "<your complete working code>",
+    "line_n_plus_1": "``` (EXACTLY this, nothing else on this line)",
+    "no_text_before": "ABSOLUTELY NO TEXT BEFORE THE FIRST ```",
+    "no_text_after": "ABSOLUTELY NO TEXT AFTER THE FINAL ```",
+    "total_structure": "ONLY THREE COMPONENTS: opening delimiter + code + closing delimiter"
+  },
+  "style": {
+    "wrapper": "triple_backticks",
+    "language_identifier": true,
+    "clean_code": true
+  },
+  "rules": [
+    "YOUR ENTIRE RESPONSE MUST START WITH ``` IMMEDIATELY - NO TEXT BEFORE IT",
+    "Format: ```<language> on the FIRST LINE of your response",
+    "Then the code on subsequent lines",
+    "Then ``` on the last line",
+    "Do NOT write any explanation, description, or text before the code block",
+    "Do NOT write any text after the code block",
+    "The code should be complete, functional, and ready to run",
+    "Use proper indentation and formatting",
+    "Include necessary imports/includes at the top of the code",
+    "Add brief inline comments only when absolutely necessary for clarity"
+  ],
+  "supported_languages": [
+    "javascript",
+    "typescript", 
+    "python",
+    "java",
+    "c",
+    "cpp",
+    "pascal",
+    "fortran"
+  ],
+  "few_shot_examples": [
+    {
+      "user_request": "write hello world in C",
+      "correct_response": "```c\n#include <stdio.h>\nint main() {\n    printf(\"Hello, World!\\n\");\n    return 0;\n}\n```",
+      "explanation": "Starts with ```c, then code, then ```"
+    },
+    {
+      "user_request": "create a function to add two numbers in JavaScript",
+      "correct_response": "```javascript\nfunction add(a, b) {\n    return a + b;\n}\nconsole.log(add(5, 3));\n```",
+      "explanation": "Starts with ```javascript, then code, then ```"
+    },
+    {
+      "user_request": "write a Python script to check even or odd",
+      "correct_response": "```python\nnum = int(input(\"Enter a number: \"))\nif num % 2 == 0:\n    print(f\"{num} is Even\")\nelse:\n    print(f\"{num} is Odd\")\n```",
+      "explanation": "Starts with ```python, then code, then ```"
+    }
+  ],
+  "absolute_prohibitions": [
+    "NEVER start with explanatory text like 'Here is...', '#include', 'function', or any prose",
+    "NEVER output raw code without ``` delimiters",
+    "NEVER add comments outside the code block",
+    "NEVER use /* */ or // to wrap your response",
+    "NEVER forget the opening ```<language>",
+    "NEVER forget the closing ```",
+    "NEVER repeat ``` multiple times without code in between",
+    "Your FIRST character MUST be the backtick character: `"
+  ],
+  "enforcement": {
+    "validation_regex": "^```[a-z]+\\n[\\s\\S]+\\n```$",
+    "minimum_code_lines": 1,
+    "required_structure": "delimiter-code-delimiter",
+    "failure_consequence": "Response will be rejected and user will see error message"
+  }
+}

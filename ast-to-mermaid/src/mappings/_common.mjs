@@ -59,7 +59,7 @@ export function createFlowBuilder() {
 
   function addDecision(key, text) {
     const id = nodeId(key);
-    const line = `${id}{${escapeText(text)}}`;
+    const line = `${id}{${escapeConditionalText(text)}}`;
     if (currentSubgraph) {
       currentSubgraph.content.push(line);
     } else {
@@ -72,7 +72,7 @@ export function createFlowBuilder() {
   
   function addIfStatement(key, text) {
     const id = nodeId(key);
-    const line = `${id}{${escapeText(text)}}`;
+    const line = `${id}{${escapeConditionalText(text)}}`;
     if (currentSubgraph) {
       currentSubgraph.content.push(line);
     } else {
@@ -83,7 +83,7 @@ export function createFlowBuilder() {
 
   function addElseIfStatement(key, text) {
     const id = nodeId(key);
-    const line = `${id}{${escapeText(text)}}`;
+    const line = `${id}{${escapeConditionalText(text)}}`;
     if (currentSubgraph) {
       currentSubgraph.content.push(line);
     } else {
@@ -94,7 +94,7 @@ export function createFlowBuilder() {
 
   function addSwitchStatement(key, text) {
     const id = nodeId(key);
-    const line = `${id}{${escapeText(text)}}`;
+    const line = `${id}{${escapeConditionalText(text)}}`;
     if (currentSubgraph) {
       currentSubgraph.content.push(line);
     } else {
@@ -116,7 +116,7 @@ export function createFlowBuilder() {
 
   function addLoopStatement(key, text) {
     const id = nodeId(key);
-    const line = `${id}{${escapeText(text)}}`;
+    const line = `${id}{${escapeConditionalText(text)}}`;
     if (currentSubgraph) {
       currentSubgraph.content.push(line);
     } else {
@@ -149,9 +149,21 @@ export function createFlowBuilder() {
 
   function addReturnStatement(key, text) {
     const id = nodeId(key);
-    // Only escape problematic characters but keep brackets for return statements
-    const escapedText = String(text).replace(/[{}]/g, '').replace(/[()]/g, '');
+    // Properly escape text for return statements
+    const escapedText = escapeText(text);
     const line = `${id}>${escapedText}]`;
+    if (currentSubgraph) {
+      currentSubgraph.content.push(line);
+    } else {
+      lines.push(line);
+    }
+    return id;
+  }
+
+  // Add a join point for control flow merging
+  function addJoinPoint(key, text = 'join') {
+    const id = nodeId(key);
+    const line = `${id}[${escapeText(text)}]`;
     if (currentSubgraph) {
       currentSubgraph.content.push(line);
     } else {
@@ -231,6 +243,7 @@ export function createFlowBuilder() {
     addContinueStatement,
     addBreakStatement,
     addReturnStatement,
+    addJoinPoint,
     beginSubgraph,
     endSubgraph,
     link, 
@@ -241,21 +254,32 @@ export function createFlowBuilder() {
 }
 
 function escapeText(text) {
-  // Remove bracket-like chars and parentheses but leave a space in their place
-  // Keep quotes intact so labels like "print \"HI\"" render properly
-  return String(text)
-    .replace(/\{/g, ' ')
-    .replace(/\}/g, ' ')
-    .replace(/\[/g, ' ')
-    .replace(/\]/g, ' ')
-    .replace(/\(/g, ' ')
-    .replace(/\)/g, ' ')
-    // Clean up extra spaces
-    .replace(/\s+/g, ' ')
+  // Ensure all node strings are enclosed with double quotes as per requirement
+  // In Mermaid, if text contains special characters, it should be enclosed in double quotes
+  // and special characters within the text should be escaped
+  // Rule: Inside the string we should not use " directly, escape them properly
+  let escapedText = String(text)
+    .replace(/"/g, '&quot;')   // Replace double quotes with HTML entity to avoid using " inside strings
+    .replace(/\n/g, ' ')       // Replace newlines with spaces
     .trim();
+  
+  // Enclose all text with double quotes
+  return `"${escapedText}"`;
+}
+
+// Special escape function for conditional statements that preserves operators
+// Now deprecated since escapeText also preserves operators
+function escapeConditionalText(text) {
+  // For backward compatibility, just call escapeText
+  return escapeText(text);
 }
 
 function escapeEdge(text) {
-  return String(text).replace(/--/g, '-');
+  // Properly escape edge labels for Mermaid syntax
+  return String(text)
+    .replace(/"/g, '\\"')   // Escape double quotes with backslash
+    .replace(/--/g, '-')        // Handle Mermaid comment syntax
+    .replace(/\n/g, ' ')       // Replace newlines with spaces
+    .trim();
 }
 

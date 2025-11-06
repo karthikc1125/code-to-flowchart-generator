@@ -44,6 +44,13 @@ function textOf(node) {
 export const javascriptConfig = {
   rootNodeTypes: ['program'],
   
+  // JavaScript: Return top-level statements
+  // Note: Callbacks and async code captured as single statements (expected behavior)
+  findStatementNodes(root) {
+    if (!root || !root.children) return root?.children || [];
+    return root.children || [];
+  },
+  
   // Function to identify user-defined functions
   isFunctionDefinition(node) {
     if (!node) return false;
@@ -73,21 +80,39 @@ export const javascriptConfig = {
   },
   
   isAssignment(node) {
-    return node.type === 'assignment_expression' || 
-           node.type === 'variable_declaration' ||
-           node.type === 'lexical_declaration' ||
-           node.type === 'const_declaration' ||
-           node.type === 'let_declaration';
+    if (!node) return false;
+    // Direct assignment types
+    if (node.type === 'assignment_expression' || 
+        node.type === 'variable_declaration' ||
+        node.type === 'lexical_declaration' ||
+        node.type === 'const_declaration' ||
+        node.type === 'let_declaration') {
+      return true;
+    }
+    // Check if this is an expression statement containing an assignment
+    if (node.type === 'expression_statement' && node.children) {
+      return node.children.some(child => child && child.type === 'assignment_expression');
+    }
+    return false;
   },
   
   extractVariableInfo(node) {
+    // Handle expression statements that contain assignments
+    if (node.type === 'expression_statement' && node.children) {
+      const assignmentNode = node.children.find(c => c && c.type === 'assignment_expression');
+      if (assignmentNode) {
+        return this.extractVariableInfo(assignmentNode);
+      }
+    }
+    
     const declarator = node.children.find(c => c.type === 'variable_declarator') || node;
     const name = getVariableName(declarator.children.find(c => c.type === 'identifier'));
     const value = declarator.children.find(c => 
       c.type === 'string' || 
       c.type === 'number' || 
       c.type === 'string_literal' ||
-      c.type === 'numeric_literal'
+      c.type === 'numeric_literal' ||
+      c.type === 'binary_expression'
     )?.text || 'value';
     return { name, value };
   },
@@ -186,40 +211,48 @@ export const javascriptConfig = {
   },
   
   extractThenBranch(node) {
-    // Handle switch statements differently
+    // Handle switch statements differently - return all children for case processing
     if (node.type === 'switch_statement') {
-      // For switch statements, we'll process each case as a separate branch
       const switchBody = node.children.find(c => c && c.type === 'switch_body');
       if (switchBody) {
-        // Find all switch cases within the switch
-        const switchCases = switchBody.children.filter(c => c && (c.type === 'switch_case' || c.type === 'switch_default'));
-        
-        // Collect all calls from all cases
-        const allCalls = [];
-        for (const switchCase of switchCases) {
-          const calls = findAll(switchCase, 'call_expression');
-          allCalls.push(...calls);
-        }
-        
-        return { calls: allCalls };
+        return { calls: switchBody.children || [] };
       }
       return { calls: [] };
     }
     
+    // Handle regular if statements - return ALL statements from the body
     const thenBlock = node.children.find(c => c.type === 'statement_block' || c.type === 'expression_statement');
-    const calls = thenBlock ? findAll(thenBlock, 'call_expression') : [];
-    return { calls };
+    if (thenBlock) {
+      if (thenBlock.type === 'statement_block' && thenBlock.children) {
+        // Return all child statements from the block for recursive processing
+        return { calls: thenBlock.children.filter(c => c && c.type !== '{' && c.type !== '}') };
+      }
+      // Single statement
+      return { calls: [thenBlock] };
+    }
+    return { calls: [] };
   },
   
   extractElseBranch(node) {
-    // Switch statements don't have else branches in the same way
+    // Switch statements don't have else branches
     if (node.type === 'switch_statement') {
       return { calls: [] };
     }
     
+    // Handle else clause - return ALL statements from the body
     const elseBlock = node.children.find(c => c.type === 'else_clause');
-    const calls = elseBlock ? findAll(elseBlock, 'call_expression') : [];
-    return { calls };
+    if (elseBlock && elseBlock.children) {
+      const blockOrStmt = elseBlock.children.find(c => c && (c.type === 'statement_block' || c.type === 'expression_statement' || c.type === 'if_statement'));
+      if (blockOrStmt) {
+        if (blockOrStmt.type === 'statement_block' && blockOrStmt.children) {
+          // Return all child statements from the block for recursive processing
+          return { calls: blockOrStmt.children.filter(c => c && c.type !== '{' && c.type !== '}') };
+        }
+        // For else if or single statement
+        return { calls: [blockOrStmt] };
+      }
+    }
+    return { calls: [] };
   },
   
   isLoop(node) {
@@ -232,7 +265,6 @@ export const javascriptConfig = {
     // For for loops, extract the full condition
     let condition = 'condition';
     if (node.type === 'for_statement') {
-      // Extract initialization, condition, and update parts
       const initDecl = node.children.find(c => c && (c.type === 'lexical_declaration' || c.type === 'variable_declaration' || c.type === 'var_declaration'));
       const condExpr = node.children.find(c => c && c.type === 'binary_expression');
       const updateExpr = node.children.find(c => c && c.type === 'update_expression');
@@ -241,7 +273,6 @@ export const javascriptConfig = {
       const condText = condExpr ? textOf(condExpr) : '';
       const updateText = updateExpr ? textOf(updateExpr) : '';
       
-      // Format the condition properly to avoid double semicolons
       const initPart = initText ? initText.replace(/;$/, '') : '';
       const condPart = condText || '';
       const updatePart = updateText ? updateText.replace(/^;\s*/, '') : '';
@@ -249,14 +280,11 @@ export const javascriptConfig = {
       const parts = [initPart, condPart, updatePart].filter(Boolean);
       condition = parts.join('; ');
     } else if (node.type === 'for_in_statement' || node.type === 'for_of_statement') {
-      // For for-in and for-of loops, extract the full condition
       const condNodes = node.children.filter(c => c && c.named);
       condition = condNodes.map(c => textOf(c)).join(' ');
     } else if (node.type === 'do_statement') {
-      // For do-while loops, extract the condition from the parenthesized_expression
       const condNode = node.children.find(c => c && c.type === 'parenthesized_expression');
       condition = condNode ? textOf(condNode) : 'condition';
-      // Remove parentheses if present
       if (condition.startsWith('(') && condition.endsWith(')')) {
         condition = condition.substring(1, condition.length - 1);
       }
@@ -269,28 +297,21 @@ export const javascriptConfig = {
       condition = condNode?.text || 'condition';
     }
     
+    // Return ALL statements from the loop body, not just call expressions
     const bodyBlock = node.children.find(c => c.type === 'statement_block' || c.type === 'expression_statement');
-    // For JavaScript, we need to look for both call_expression and expression_statement nodes
-    // that contain update_expressions (for increment/decrement)
-    let calls = [];
     if (bodyBlock) {
-      // Get call expressions
-      calls = findAll(bodyBlock, 'call_expression');
-      
-      // Also get expression statements that contain update expressions
-      const exprStatements = findAll(bodyBlock, 'expression_statement');
-      for (const stmt of exprStatements) {
-        if (stmt && stmt.children) {
-          // Look for update expressions
-          const updateExprs = findAll(stmt, 'update_expression');
-          if (updateExprs.length > 0) {
-            // This is an increment/decrement statement, add it to calls
-            calls.push(stmt);
-          }
-        }
+      if (bodyBlock.type === 'statement_block' && bodyBlock.children) {
+        // Return all child statements from the body block for recursive processing
+        return { 
+          type: loopType, 
+          condition, 
+          calls: bodyBlock.children.filter(c => c && c.type !== '{' && c.type !== '}') 
+        };
       }
+      // Single statement
+      return { type: loopType, condition, calls: [bodyBlock] };
     }
-    return { type: loopType, condition, calls };
+    return { type: loopType, condition, calls: [] };
   },
   
   // New functions for enhanced language features
