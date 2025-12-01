@@ -1,17 +1,17 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiArrowRight, FiCode, FiFileText, FiZap } from 'react-icons/fi';
-import styles from '../styles/Welcome.module.css';
+import { FiArrowRight, FiArrowLeft, FiCode, FiFileText, FiZap } from 'react-icons/fi';
 import ThemeSwitch from '../components/ThemeSwitchButton';
+
 import styledComp from 'styled-components';
 
-const Container = styledComp.div<{ theme?: { background: string, text: string } }>`
+const Container = styledComp.div<{ theme?: { background: string, text: string } }> `
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background-color: ${props => props.theme?.background || '#f3f4f6'};
+  background-color: ${props => props.theme?.background || '#f5f7fa'};
   padding: 1rem;
   color: ${props => props.theme?.text || '#222'};
 `;
@@ -30,6 +30,26 @@ const Subtitle = styledComp.p<{ theme?: { text: string } }>`
   text-align: center;
 `;
 
+const Header = styledComp.header`
+  text-align: center;
+  margin-bottom: 2rem;
+`;
+
+const ContinueButton = styledComp.button`
+  padding: 0.75rem 1.5rem;
+  background-color: #3b82f6;
+  color: white;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  border: none;
+  cursor: pointer;
+
+  &:hover {
+    background-color: #2563eb;
+  }
+`;
+
 const Instructions: React.FC = () => {
   const navigate = useNavigate();
 
@@ -37,15 +57,68 @@ const Instructions: React.FC = () => {
     navigate('/code-entry');
   };
 
+  // Add keyboard event listeners for navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+Shift+C to continue to code editor
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'c') {
+        e.preventDefault();
+        navigate('/code-entry');
+      }
+      // Ctrl+Shift+B to go back
+      else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        navigate(-1);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [navigate]);
+
   return (
     <Container>
+      
       <ThemeSwitch />
-      <header className={styles.header}>
+      <div style={{ position: 'absolute', top: '16px', left: '16px', zIndex: 10 }}>
+        <button
+          onClick={() => navigate(-1)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 12px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '13px',
+            fontWeight: '500',
+            transition: 'all 0.2s',
+            boxShadow: '0 2px 4px rgba(102, 126, 234, 0.3)'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-1px)';
+            e.currentTarget.style.boxShadow = '0 4px 8px rgba(102, 126, 234, 0.4)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 2px 4px rgba(102, 126, 234, 0.3)';
+          }}
+        >
+          <FiArrowLeft size={14} />
+          Back
+        </button>
+      </div>
+      <Header>
         <Title>How to Use This Tool</Title>
         <Subtitle>
           Follow these simple steps to convert your code into beautiful flowcharts
         </Subtitle>
-      </header>
+      </Header>
 
       <section style={{ maxWidth: 800, margin: '32px auto', padding: '0 16px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
@@ -132,10 +205,10 @@ const Instructions: React.FC = () => {
         </div>
 
         <div style={{ textAlign: 'center', marginTop: 48 }}>
-          <button onClick={handleContinue} className={styles.button}>
+          <ContinueButton onClick={handleContinue}>
             Continue to Code Editor
             <FiArrowRight style={{ marginLeft: 8 }} />
-          </button>
+          </ContinueButton>
         </div>
       </section>
 

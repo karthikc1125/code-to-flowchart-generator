@@ -4,6 +4,7 @@ import { mapWhile } from "./loops/while.mjs";
 import { mapDoWhile } from "./loops/do-while.mjs";
 import { mapSwitch, mapCase, mapDefault } from "./conditional/switch/switch.mjs";
 import { mapFunction } from "./functions/function-definition.mjs";
+import { mapFunctionCall } from "./functions/function-call.mjs";
 import { mapReturn } from "./other-statements/return.mjs";
 import { mapAssign } from "./other-statements/assign.mjs";
 import { mapBreakStatement } from "./other-statements/break.mjs";
@@ -25,6 +26,7 @@ export function mapNodeC(node, ctx) {
     case "Default": return mapDefault(node, ctx);
     case "Break": return mapBreakStatement(node, ctx);
     case "Function": return mapFunction(node, ctx);
+    case "FunctionCall": return mapFunctionCall(node, ctx);
     case "Return": return mapReturn(node, ctx);
     case "Assign": return mapAssign(node, ctx);
     case "IO": return mapIO(node, ctx);

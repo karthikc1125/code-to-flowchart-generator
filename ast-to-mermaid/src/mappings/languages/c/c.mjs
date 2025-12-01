@@ -2,13 +2,15 @@ import { mapIf } from "./conditional/if.mjs";
 import { mapFor } from "./loops/for.mjs";
 import { mapWhile } from "./loops/while.mjs";
 import { mapDoWhile } from "./loops/do-while.mjs";
-import { mapSwitch } from "./switch/switch.mjs";
+import { mapSwitch, mapCase, mapDefault } from "./conditional/switch/switch.mjs";
 import { mapIO } from "./io/io.mjs";
 import { mapAssign } from "./other-statements/assignment.mjs";
 import { mapDecl } from "./other-statements/declaration.mjs";
 import { mapExpr } from "./other-statements/expression.mjs";
 import { mapReturn } from "./other-statements/return.mjs";
 import { mapFunction } from "./functions/function-definition.mjs";
+import { mapFunctionCall } from "./functions/function-call.mjs";
+import { mapBreakStatement } from "./other-statements/break.mjs";
 
 /**
  * Central dispatcher for C language constructs
@@ -35,6 +37,15 @@ export function mapNodeC(node, ctx) {
     case "Switch": 
       return mapSwitch(node, ctx);
       
+    case "Case": 
+      return mapCase(node, ctx);
+      
+    case "Default": 
+      return mapDefault(node, ctx);
+      
+    case "Break": 
+      return mapBreakStatement(node, ctx);
+      
     case "IO": 
       return mapIO(node, ctx);
       
@@ -52,6 +63,9 @@ export function mapNodeC(node, ctx) {
       
     case "Function": 
       return mapFunction(node, ctx);
+      
+    case "FunctionCall": 
+      return mapFunctionCall(node, ctx);
       
     case "Block":
       // Handle block statements by mapping each child

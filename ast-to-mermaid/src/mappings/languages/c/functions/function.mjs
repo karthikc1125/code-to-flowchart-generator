@@ -3,11 +3,12 @@
  */
 
 export function mapFunctionDeclaration(node) {
-  // Placeholder for function declaration mapping logic
+  // Map C function declaration to a standardized format
   return {
-    type: 'function',
-    id: node.id,
-    params: node.params,
-    body: node.body
+    type: 'Function',
+    name: node.name || node.declarator?.name,
+    params: node.parameters || node.declarator?.parameters || [],
+    body: node.body || [],
+    returnType: node.returnType || node.declarator?.returnType
   };
 }

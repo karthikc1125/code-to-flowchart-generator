@@ -1,3 +1,23 @@
+// Helper function to extract function calls from expressions
+function extractFunctionCalls(text) {
+  if (!text) return [];
+  
+  const functionCalls = [];
+  // Match function calls: word followed by parentheses with optional content
+  const functionCallRegex = /\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\([^)]*\)/g;
+  let match;
+  
+  while ((match = functionCallRegex.exec(text)) !== null) {
+    // Filter out common keywords that aren't function calls
+    const keywords = ['if', 'for', 'while', 'switch', 'return'];
+    if (!keywords.includes(match[1])) {
+      functionCalls.push(match[1]);
+    }
+  }
+  
+  return functionCalls;
+}
+
 /**
  * Normalize C++ AST to unified node types
  * @param {Object} node - AST node
@@ -9,46 +29,43 @@ export function normalizeCpp(node) {
   // Convert C++-specific AST nodes to unified node types
   switch (node.type) {
     case "translation_unit":
-      // Only process the main function from the translation unit
-      const mainFunction = node.children ? node.children.find(child => {
-        if (child.type === 'function_definition') {
-          const functionDeclarator = child.child(1);
-          if (functionDeclarator && functionDeclarator.type === 'function_declarator') {
-            const functionName = functionDeclarator.child(0)?.text;
-            return functionName === 'main';
-          }
-        }
-        return false;
-      }) : null;
-      
-      if (mainFunction) {
-        return normalizeCpp(mainFunction);
-      }
-      
+      // Return the children as a block
       return {
-        type: "Program",
-        name: "main",
-        body: []
+        type: "Block",
+        body: node.children
+          .map(normalizeCpp)
+          .filter(Boolean)
       };
       
     case "function_definition":
-      // Process the body of the main function
+      // More robust function definition handling
+      // Extract function name from the identifier inside function_declarator
       const functionDeclarator = node.child(1);
+      let functionName = "unknown";
+      let paramText = "()";
+      
       if (functionDeclarator && functionDeclarator.type === 'function_declarator') {
-        const functionName = functionDeclarator.child(0)?.text;
-        if (functionName === 'main') {
-          // Get the compound statement (body) of the main function
-          const bodyNode = node.child(2); // This should be the compound_statement
-          const normalizedBody = bodyNode ? normalizeCpp(bodyNode) : null;
-          return {
-            type: "Program",
-            name: "main",
-            body: normalizedBody ? normalizedBody.body || [] : []
-          };
+        // Get the identifier (function name)
+        const identifier = functionDeclarator.child(0);
+        if (identifier && identifier.type === 'identifier') {
+          functionName = identifier.text;
+        }
+        
+        // Get the parameter list
+        const paramListNode = functionDeclarator.child(1);
+        if (paramListNode) {
+          paramText = paramListNode.text;
         }
       }
-      // Ignore other function definitions - they're boilerplate
-      return null;
+      
+      const bodyNode = node.child(node.children.length - 1);
+      
+      return {
+        type: "Function",
+        name: functionName + paramText,
+        parameters: paramText,
+        body: bodyNode ? normalizeCpp(bodyNode) : null
+      };
       
     case "compound_statement":
       // Handle compound statements (blocks with { })
@@ -82,12 +99,40 @@ export function normalizeCpp(node) {
       };
       
     case "for_statement":
+      // Handle both declaration-style and assignment-style for loops
+      // Both styles have the same pattern:
+      // Child 2: init
+      // Child 3/4: condition (after semicolon)
+      // Child 5/6: update (after semicolon)  
+      // Child 7/8: body (after closing parenthesis)
+      
+      const initNode = node.child(2);
+      
+      // Find condition (first binary_expression after init)
+      let condNode = null;
+      let updateNode = null;
+      let forBodyNode = null;
+      
+      // Look for the condition, update, and body nodes
+      for (let i = 3; i < node.children.length; i++) {
+        const child = node.child(i);
+        if (!child) continue;
+        
+        if (child.type === "binary_expression" && !condNode) {
+          condNode = child;
+        } else if (child.type === "update_expression" && !updateNode) {
+          updateNode = child;
+        } else if (child.type === "compound_statement" && !forBodyNode) {
+          forBodyNode = child;
+        }
+      }
+      
       return {
         type: "For",
-        init: normalizeCpp(node.child(2)), // init is typically at index 2
-        cond: normalizeCpp(node.child(4)), // condition is typically at index 4
-        update: normalizeCpp(node.child(6)), // update is typically at index 6
-        body: normalizeCpp(node.child(8)) // body is typically at index 8
+        init: normalizeCpp(initNode),
+        cond: normalizeCpp(condNode),
+        update: normalizeCpp(updateNode),
+        body: normalizeCpp(forBodyNode)
       };
       
     case "while_statement":
@@ -98,17 +143,92 @@ export function normalizeCpp(node) {
       };
       
     case "expression_statement":
-      return normalizeCpp(node.child(0)); // Process the actual expression
+      // Check if this expression contains cout or cin calls
+      if (node.text && (node.text.includes('cout') || node.text.includes('cin'))) {
+        return {
+          type: "IO",
+          text: node.text
+        };
+      }
+      
+      // Handle printf and scanf calls
+      const expr = node.child(0);
+      if (expr && expr.type === "call_expression") {
+        const func = expr.child(0);
+        if (func && func.text === "printf") {
+          // Format printf text as expected
+          let printfText = expr.text;
+          // Remove outer parentheses and format arguments
+          if (printfText.startsWith('printf(') && printfText.endsWith(')')) {
+            printfText = printfText.substring(7, printfText.length - 1);
+            // Replace quotes and format as expected
+            printfText = printfText.replace(/"/g, '').replace(/, /g, ' , ').replace(/\n/g, '\\n');
+          }
+          return {
+            type: "IO",
+            text: `printf(${printfText})`
+          };
+        } else if (func && func.text === "scanf") {
+          // Format scanf text as expected
+          let scanfText = expr.text;
+          // Remove outer parentheses
+          if (scanfText.startsWith('scanf(') && scanfText.endsWith(')')) {
+            scanfText = scanfText.substring(6, scanfText.length - 1);
+          }
+          return {
+            type: "IO",
+            text: `scanf(${scanfText})`
+          };
+        } else if (func) {
+          // Handle other function calls
+          return {
+            type: "FunctionCall",
+            name: func.text,
+            arguments: expr.children ? expr.children.slice(1) : [] // Skip the function name
+          };
+        }
+      }
+      // For other expressions, just return the text
+      return {
+        type: "Expr",
+        text: node.text
+      };
       
     case "assignment_expression":
-      return {
+      // Check if this assignment expression contains function calls
+      const assignFunctionCalls = [];
+      
+      // Recursively search for function calls in children
+      function findAssignFunctionCalls(n) {
+        if (!n) return;
+        
+        if (n.type === 'call_expression') {
+          const func = n.child(0);
+          if (func && func.type === 'identifier') {
+            assignFunctionCalls.push(func.text);
+          }
+        }
+        
+        if (n.children) {
+          n.children.forEach(child => findAssignFunctionCalls(child));
+        }
+      }
+      
+      findAssignFunctionCalls(node);
+      
+      const assignNode = {
         type: "Assign",
         text: node.text
       };
       
+      // If we found function calls, store them for later processing
+      if (assignFunctionCalls.length > 0) {
+        assignNode.functionCalls = assignFunctionCalls;
+      }
+      
+      return assignNode;
+      
     case "declaration":
-      // Process declarations - they are executable statements
-      // Even declarations without initialization are executable statements
       return {
         type: "Decl",
         text: node.text
@@ -209,28 +329,73 @@ export function normalizeCpp(node) {
           text: node.text
         };
       }
-      return {
-        type: "Expr",
-        text: node.text
-      };
-      
-    case "binary_expression":
-      // Handle cout/cin statements (C++ stream operations use << or >> operators)
-      if (node.text && (node.text.includes('cout') || node.text.includes('cin'))) {
+      // Handle cin statements
+      if (node.text && node.text.includes('cin')) {
         return {
           type: "IO",
           text: node.text
         };
       }
+      // Handle printf statements
+      const functionCallee = node.child(0);
+      if (functionCallee && functionCallee.text === 'printf') {
+        return {
+          type: "IO",
+          text: node.text
+        };
+      }
+      // Handle scanf statements
+      if (functionCallee && functionCallee.text === 'scanf') {
+        return {
+          type: "IO",
+          text: node.text
+        };
+      }
+      // Handle general function calls
       return {
+        type: "FunctionCall",
+        text: node.text,
+        name: functionCallee ? functionCallee.text : "unknown_function"
+      };
+      
+    case "binary_expression":
+      // Check if this binary expression contains function calls
+      const functionCalls = [];
+      
+      // Recursively search for function calls in children
+      function findFunctionCalls(n) {
+        if (!n) return;
+        
+        if (n.type === 'call_expression') {
+          const func = n.child(0);
+          if (func && func.type === 'identifier') {
+            functionCalls.push(func.text);
+          }
+        }
+        
+        if (n.children) {
+          n.children.forEach(child => findFunctionCalls(child));
+        }
+      }
+      
+      findFunctionCalls(node);
+      
+      const exprNode = {
         type: "Expr",
         text: node.text
       };
       
+      // If we found function calls, store them for later processing
+      if (functionCalls.length > 0) {
+        exprNode.functionCalls = functionCalls;
+      }
+      
+      return exprNode;
+      
     case "return_statement":
       return {
         type: "Return",
-        text: node.text
+        value: node.child(1)?.text || null
       };
       
     case "preproc_include":
@@ -249,6 +414,42 @@ export function normalizeCpp(node) {
       // Ignore primitive types when they appear as standalone nodes
       return null;
       
+    case "identifier":
+    case "number_literal":
+    case "parenthesized_expression":
+      // Check if this parenthesized expression contains function calls
+      const parenFunctionCalls = [];
+      
+      // Recursively search for function calls in children
+      function findParenFunctionCalls(n) {
+        if (!n) return;
+        
+        if (n.type === 'call_expression') {
+          const func = n.child(0);
+          if (func && func.type === 'identifier') {
+            parenFunctionCalls.push(func.text);
+          }
+        }
+        
+        if (n.children) {
+          n.children.forEach(child => findParenFunctionCalls(child));
+        }
+      }
+      
+      findParenFunctionCalls(node);
+      
+      const parenExprNode = {
+        type: "Expr",
+        text: node.text
+      };
+      
+      // If we found function calls, store them for later processing
+      if (parenFunctionCalls.length > 0) {
+        parenExprNode.functionCalls = parenFunctionCalls;
+      }
+      
+      return parenExprNode;
+
     case "comment":
       // Ignore comments - they shouldn't appear in flowcharts
       return null;
@@ -263,4 +464,10 @@ export function normalizeCpp(node) {
       }
       return null;
   }
+}
+
+function isMainFunction(node) {
+  if (!node?.name) return false;
+  const name = node.name.toString().trim();
+  return name === 'main';
 }

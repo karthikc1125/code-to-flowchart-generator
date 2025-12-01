@@ -2,6 +2,7 @@
 const createState = () => ({
   nodeId: 2,        // Start from 2 since N1 is reserved for start node
   subgraphId: 1,    // Counter for subgraphs
+  subgraphNodeId: 1, // Counter for subgraph nodes
 });
 
 export function ctx(sharedState = null) {
@@ -20,7 +21,10 @@ export function ctx(sharedState = null) {
     deferredStatements: [],
     ifStack: [],
     pendingJoins: [],
-    switchExecutedStatements: [],  // Track executed statements within switch cases
+    switchExecutedStatements: [],  // Track executed statements within switch cases,
+    functionMap: {}, // Map of function names to their definitions
+    subgraphIds: {}, // Map of function names to their subgraph IDs
+    functionCalls: [], // Array to store function calls for later connection
     
     next() {
       return `N${state.nodeId++}`;
@@ -28,6 +32,14 @@ export function ctx(sharedState = null) {
 
     nextSubgraphId() {
       return `SG${state.subgraphId++}`;
+    },
+    
+    nextSubgraphNode() {
+      // Use a separate counter for subgraph nodes
+      if (!state.subgraphNodeId) {
+        state.subgraphNodeId = 1;
+      }
+      return `SGN${state.subgraphNodeId++}`;
     },
     
     add(id, label) {
@@ -58,6 +70,71 @@ export function ctx(sharedState = null) {
       this.nodes.push(`subgraph ${label}`);
       lines.forEach(line => this.nodes.push(`  ${line}`));
       this.nodes.push('end');
+    },
+
+    // Add function to create connections between function calls and definitions
+    createFunctionConnections() {
+      // Keep track of connections we've already made to avoid duplicates
+      const existingConnections = new Set();
+      
+      // Helper function to add a connection if it doesn't already exist
+      const addConnection = (from, to) => {
+        const connectionKey = `${from} <--> ${to}`;
+        if (!existingConnections.has(connectionKey)) {
+          existingConnections.add(connectionKey);
+          this.edges.push(connectionKey);
+        }
+      };
+      
+      // First handle explicitly stored function calls
+      if (this.functionCalls && this.subgraphIds) {
+        this.functionCalls.forEach(callInfo => {
+          const functionName = callInfo.functionName;
+          const callId = callInfo.callId;
+          
+          if (this.subgraphIds[functionName]) {
+            const subgraphId = this.subgraphIds[functionName];
+            // Add a bidirectional connection from the function call to the subgraph
+            addConnection(callId, subgraphId);
+          }
+        });
+      }
+      
+      // Then scan through all nodes to find function calls in node texts
+      if (this.subgraphIds && this.nodes) {
+        // Create a map of function names to subgraph IDs for quick lookup
+        const functionRegex = /\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/g;
+        
+        this.nodes.forEach(nodeLine => {
+          // Check if this is a regular node (not a subgraph declaration)
+          if (nodeLine.startsWith('N') && !nodeLine.startsWith('subgraph')) {
+            // Extract the node ID (e.g., N5)
+            const nodeIdMatch = nodeLine.match(/^N\d+/);
+            if (nodeIdMatch) {
+              const nodeId = nodeIdMatch[0];
+              
+              // Look for function calls in the node text
+              const nodeText = nodeLine.substring(nodeId.length);
+              let match;
+              while ((match = functionRegex.exec(nodeText)) !== null) {
+                const functionName = match[1];
+                
+                // Skip common C functions that are not user-defined
+                if (['if', 'for', 'while', 'switch', 'return', 'break', 'continue', 'sizeof'].includes(functionName)) {
+                  continue;
+                }
+                
+                // Check if this is a user-defined function
+                if (this.subgraphIds[functionName]) {
+                  const subgraphId = this.subgraphIds[functionName];
+                  // Add a bidirectional connection from the node to the subgraph
+                  addConnection(nodeId, subgraphId);
+                }
+              }
+            }
+          }
+        });
+      }
     },
 
     completeBranches() {
@@ -229,6 +306,11 @@ export function ctx(sharedState = null) {
     },
     
     emit() {
+      // Create function connections before emitting
+      if (typeof this.createFunctionConnections === 'function') {
+        this.createFunctionConnections();
+      }
+      
       return [
         'flowchart TD',
         ...this.nodes,

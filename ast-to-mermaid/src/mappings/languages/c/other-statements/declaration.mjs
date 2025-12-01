@@ -20,4 +20,17 @@ export function mapDecl(node, ctx) {
   
   // Connect to previous node and set as last
   linkNext(ctx, declId);
+  
+  // If this declaration contains function calls, store them for later connection
+  if (node.functionCalls && Array.isArray(node.functionCalls)) {
+    node.functionCalls.forEach(funcName => {
+      if (!ctx.functionCalls) {
+        ctx.functionCalls = [];
+      }
+      ctx.functionCalls.push({
+        callId: declId,
+        functionName: funcName
+      });
+    });
+  }
 }

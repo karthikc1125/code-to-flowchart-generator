@@ -20,4 +20,17 @@ export function mapExpr(node, ctx) {
   
   // Connect to previous node and set as last
   linkNext(ctx, exprId);
+  
+  // If this expression contains function calls, store them for later connection
+  if (node.functionCalls && Array.isArray(node.functionCalls)) {
+    node.functionCalls.forEach(funcName => {
+      if (!ctx.functionCalls) {
+        ctx.functionCalls = [];
+      }
+      ctx.functionCalls.push({
+        callId: exprId,
+        functionName: funcName
+      });
+    });
+  }
 }

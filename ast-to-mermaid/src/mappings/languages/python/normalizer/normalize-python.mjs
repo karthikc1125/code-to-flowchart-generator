@@ -84,10 +84,9 @@ export function normalizePython(node) {
     case "for_statement":
       return {
         type: "For",
-        init: null, // Python for loops don't have traditional init
-        cond: normalizePython(node.child(3)), // condition is typically at index 3
-        update: null, // Python for loops don't have traditional update
-        body: normalizePython(node.child(5)) // body is typically at index 5
+        target: normalizePython(node.child(1)), // target is at index 1 (identifier)
+        iter: normalizePython(node.child(3)), // iterator is at index 3 (call)
+        body: normalizePython(node.child(5)) // body is at index 5 (block)
       };
       
     case "while_statement":
@@ -101,14 +100,21 @@ export function normalizePython(node) {
       return normalizePython(node.child(0)); // Process the actual expression
       
     case "assignment":
+      // Check if this assignment contains an input call
+      if (node.text && node.text.includes('input')) {
+        return {
+          type: "IO",
+          text: node.text
+        };
+      }
       return {
         type: "Assign",
         text: node.text
       };
       
     case "call":
-      // Handle print statements
-      if (node.text && node.text.includes('print')) {
+      // Handle print and input statements
+      if (node.text && (node.text.includes('print') || node.text.includes('input'))) {
         return {
           type: "IO",
           text: node.text
@@ -181,6 +187,14 @@ export function normalizePython(node) {
         type: "Return",
         text: node.text
       };
+      
+    case "comment":
+      // Skip comments - they should be ignored
+      return null;
+      
+    case "import_statement":
+      // Skip import statements - they should be ignored
+      return null;
       
     default:
       // For simple nodes with text, convert to expression

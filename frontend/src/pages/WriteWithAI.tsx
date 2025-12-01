@@ -8,9 +8,10 @@ import { FaPaperPlane } from 'react-icons/fa';
 import { styled } from '@mui/material/styles';
 import MonacoEditor from '@monaco-editor/react';
 import ThemeSwitch from '../components/ThemeSwitchButton';
+
 import styledComp from 'styled-components';
 
-const Container = styledComp.div<{ theme?: { background: string, text: string } }>`
+const Container = styledComp.div<{ theme?: { background: string, text: string } }> `
   background-color: ${props => props.theme?.background || '#f5f7fa'};
   color: ${props => props.theme?.text || '#222'};
   min-height: 100vh;
@@ -172,6 +173,51 @@ const WriteWithAI: React.FC = () => {
     const [detectedLanguage, setDetectedLanguage] = useState<string>('plaintext');
     const [isDetecting, setIsDetecting] = useState(false);
     const [aiResponses, setAiResponses] = useState<Array<{content: string, codeBlocks: Array<{language: string, code: string}>}>>([]);
+
+    // Add keyboard event listeners for navigation and actions
+    useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        // Ctrl+Shift+G to generate code
+        if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'g') {
+          e.preventDefault();
+          if (promptText.trim()) {
+            // Find and click the generate button
+            const generateButton = document.querySelector('button.MuiButton-contained');
+            if (generateButton) {
+              (generateButton as HTMLButtonElement).click();
+            }
+          }
+        }
+        // Ctrl+Shift+U to use code
+        else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'u') {
+          e.preventDefault();
+          if (generatedCode.trim()) {
+            navigate('/code-entry', { state: { code: generatedCode } });
+          }
+        }
+        // Ctrl+Enter to send prompt in chat
+        else if (e.ctrlKey && e.key === 'Enter') {
+          e.preventDefault();
+          if (promptText.trim()) {
+            // Find and click the send button
+            const sendButton = document.querySelector('button.MuiIconButton-root');
+            if (sendButton) {
+              (sendButton as HTMLButtonElement).click();
+            }
+          }
+        }
+        // Ctrl+Shift+B to go back
+        else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'b') {
+          e.preventDefault();
+          navigate(-1);
+        }
+      };
+  
+      window.addEventListener('keydown', handleKeyDown);
+      return () => {
+        window.removeEventListener('keydown', handleKeyDown);
+      };
+    }, [promptText, generatedCode, navigate]);
 
     useEffect(() => {
         (async () => {
@@ -497,6 +543,7 @@ ${response}
 
     return (
         <Container>
+            
             <Box sx={{ maxWidth: 1300, mx: 'auto', p: 4 }}>
                 <Box sx={{ position: 'fixed', top: 16, left: 16, zIndex: 10 }}>
                     <BackButton onClick={() => navigate(-1)} />

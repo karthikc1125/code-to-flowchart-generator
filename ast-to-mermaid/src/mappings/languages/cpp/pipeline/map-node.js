@@ -29,6 +29,12 @@ import { mapUsing } from "../namespace/using.mjs";
 import { mapType } from "../types/type.mjs";
 import { mapFunctionDecl } from "../functions/function-decl.mjs";
 
+// Import C++ function call mapping function
+import { mapFunctionCall } from "../functions/function-call.mjs";
+
+// Import C++ assignment mapping function
+import { mapAssignment } from "../other-statements/assignment.mjs";
+
 // Import C mapping functions for Decl and Expr nodes
 import { mapDecl } from "../../c/other-statements/declaration.mjs";
 import { mapExpr } from "../../c/other-statements/expression.mjs";
@@ -66,6 +72,10 @@ export function mapNode(node, ctx) {
     case "Using": return mapUsing(node, ctx);
     case "Type": return mapType(node, ctx);
     case "FunctionDecl": return mapFunctionDecl(node, ctx);
+    // Handle function calls
+    case "FunctionCall": return mapFunctionCall(node, ctx);
+    // Handle assignments
+    case "Assign": return mapAssignment(node, ctx);
     // Handle C declaration and expression statements
     case "Decl": return mapDecl(node, ctx);
     case "Expr": return mapExpr(node, ctx);

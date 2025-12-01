@@ -61,17 +61,15 @@ export function generateFlowchart(sourceCode) {
   finalizeFlowContext(context);
 
   // 7. Build subgraphs for user-defined functions (only when a main function exists)
+  const subgraphIds = {}; // Map function names to their subgraph IDs
+  
   if (mainFunction && userFunctions.length > 0) {
     userFunctions.forEach(fnNode => {
       if (!fnNode?.body) return;
 
       const fnContext = context.fork();
 
-      // Create local start node
-      const startId = fnContext.next();
-      fnContext.add(startId, '(["start"])');
-      fnContext.setLast(startId);
-
+      // Process function body directly without creating start/end nodes
       fnContext.handle = (node) => {
         if (node && node.type) {
           mapNodeC(node, fnContext);
@@ -80,10 +78,12 @@ export function generateFlowchart(sourceCode) {
       walk(fnNode.body, fnContext);
       delete fnContext.handle;
 
-      // Finalize function-specific context
-      finalizeFlowContext(fnContext);
+      // Finalize function-specific context but don't add end node for subgraphs
+      finalizeFlowContext(fnContext, false);
 
       const subgraphId = context.nextSubgraphId();
+      // Extract function name properly by splitting on '(' to remove parameters
+      const functionName = fnNode.name ? fnNode.name.split('(')[0].trim() : "anonymous";
       const subgraphLabel = `${subgraphId}["function ${fnNode.name || "anonymous"}"]`;
       const subgraphLines = [
         ...fnContext.nodes,
@@ -91,8 +91,14 @@ export function generateFlowchart(sourceCode) {
       ];
 
       context.addSubgraph(subgraphLabel, subgraphLines);
+
+      // Store subgraph ID for function calls to reference
+      subgraphIds[functionName] = subgraphId;
     });
   }
+  
+  // Store subgraph IDs in main context for function call connections
+  context.subgraphIds = subgraphIds;
 
   // 8. Emit final Mermaid flowchart
   return context.emit();

@@ -1,0 +1,36 @@
+import { shapes } from "../mermaid/shapes.mjs";
+import { linkNext } from "../mappings/common/common.mjs";
+
+// Helper function to create decision shape with text
+const decisionShape = (text) => shapes.decision.replace('{}', text);
+
+/**
+ * Map for loop to Mermaid flowchart nodes
+ * Creates a single decision node for the entire loop
+ * @param {Object} node - Normalized for loop node
+ * @param {Object} ctx - Context for flowchart generation
+ */
+export function mapFor(node, ctx) {
+  if (!node || !ctx) return;
+  
+  // Create decision node for the entire for loop
+  const forId = ctx.next();
+  // Combine init, condition, and update into a single text
+  // Handle the case where init already contains a semicolon
+  let initText = node.init?.text || "";
+  if (initText.endsWith(';')) {
+    initText = initText.slice(0, -1); // Remove trailing semicolon
+  }
+  const forText = `for (${initText}; ${node.cond?.text || ""}; ${node.update?.text || ""})`;
+  ctx.add(forId, decisionShape(forText));
+  
+  // Connect to previous node and set as last
+  linkNext(ctx, forId);
+  
+  // Store loop information for later connection
+  ctx.pendingLoops = ctx.pendingLoops || [];
+  ctx.pendingLoops.push({
+    type: 'for',
+    loopId: forId
+  });
+}

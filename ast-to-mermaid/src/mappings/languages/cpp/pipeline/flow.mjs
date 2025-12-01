@@ -4,16 +4,7 @@ import { walk } from '../walkers/walk.mjs';
 import { ctx } from '../mermaid/context.mjs';
 import { finalizeFlowContext } from '../mermaid/finalize-context.mjs';
 
-// Import mapping functions (reusing C mapping functions since they're similar)
-import { mapIf } from '../../c/conditional/if.mjs';
-import { mapFor } from '../../c/loops/for.mjs';
-import { mapWhile } from '../../c/loops/while.mjs';
-import { mapFunction } from '../../c/functions/function-definition.mjs';
-import { mapReturn } from '../../c/other-statements/return.mjs';
-import { mapAssign } from '../../c/other-statements/assign.mjs';
-import { mapIO } from '../../c/io/io.mjs';
-import { mapDecl } from '../../c/other-statements/declaration.mjs';
-import { mapExpr } from '../../c/other-statements/expression.mjs';
+// Import mapping functions
 import { mapNode } from './map-node.js';
 
 /**
@@ -46,109 +37,87 @@ export function generateFlowchart(sourceCode) {
   context.add('N1', '(["start"])');
   context.setLast('N1');
   
-  // 4. Walk and generate nodes using mapping functions
+  // 4. Identify functions (main + user-defined)
+  let mainFunction = null;
+  const userFunctions = [];
+
   if (normalized) {
-    // Find the main program and process its body directly
-    let mainProgramBody = null;
-    
-    // Check if normalized is the main program itself
-    if (normalized.type === 'Program') {
-      mainProgramBody = normalized.body;
-    }
-    
-    // If we found the main program, process its body directly
-    if (mainProgramBody) {
-      // Create a walker context that uses the mapping functions
-      const walkerContext = {
-        handle: (node) => {
-          if (node && node.type) {
-            // Use the mapping function to add nodes to the context
-            mapNodeCpp(node, context);
-          }
-        },
-        enterBranch: (type) => {
-          if (typeof context.enterBranch === 'function') {
-            context.enterBranch(type);
-          }
-        },
-        exitBranch: (type) => {
-          if (typeof context.exitBranch === 'function') {
-            context.exitBranch(type);
-          }
-        },
-        completeIf: () => {
-          if (typeof context.completeIf === 'function') {
-            context.completeIf();
-          }
-        },
-        completeSwitch: () => {
-          if (typeof context.completeSwitch === 'function') {
-            context.completeSwitch();
+    const collectFunctions = {
+      handle: (node) => {
+        if (node && node.type === 'Function') {
+          if (isMainFunction(node)) {
+            mainFunction = node;
+          } else {
+            userFunctions.push(node);
           }
         }
-      };
-      
-      // Walk each node in the main program's body
-      mainProgramBody.forEach(node => {
-        // Special handling for Function nodes to walk into their Block.body
-        if (node.type === 'Function' && node.body) {
-          // Walk the function's direct children first (Type, FunctionDecl)
-          node.body.forEach(child => {
-            if (child.type !== 'Block') {
-              walk(child, walkerContext);
-            }
-          });
-          
-          // Then walk the statements in the Block body
-          const blockNode = node.body.find(child => child.type === 'Block');
-          if (blockNode && blockNode.body) {
-            blockNode.body.forEach(statement => {
-              walk(statement, walkerContext);
-            });
-          }
-        } else {
-          // Walk the node normally
-          walk(node, walkerContext);
-        }
-      });
-    } else {
-      // If no main program found, walk the entire normalized AST
-      const walkerContext = {
-        handle: (node) => {
-          if (node && node.type) {
-            // Use the mapping function to add nodes to the context
-            mapNodeCpp(node, context);
-          }
-        },
-        enterBranch: (type) => {
-          if (typeof context.enterBranch === 'function') {
-            context.enterBranch(type);
-          }
-        },
-        exitBranch: (type) => {
-          if (typeof context.exitBranch === 'function') {
-            context.exitBranch(type);
-          }
-        },
-        completeIf: () => {
-          if (typeof context.completeIf === 'function') {
-            context.completeIf();
-          }
-        },
-        completeSwitch: () => {
-          if (typeof context.completeSwitch === 'function') {
-            context.completeSwitch();
-          }
-        }
-      };
-      
-      walk(normalized, walkerContext);
-    }
+      }
+    };
+
+    walk(normalized, collectFunctions);
   }
-  
-  // Finalize the context using the shared C finalize function
+
+  // 5. Walk nodes to build main flowchart
+  if (normalized) {
+    const target = mainFunction?.body || normalized;
+    context.handle = (node) => {
+      if (node && node.type) {
+        mapNodeCpp(node, context);
+      }
+    };
+    walk(target, context);
+    delete context.handle;
+  }
+
+  // 6. Finalize main context
   finalizeFlowContext(context);
+
+  // 7. Build subgraphs for user-defined functions (only when a main function exists)
+  const subgraphIds = {}; // Map function names to their subgraph IDs
   
-  // 5. Emit final Mermaid flowchart
+  if (mainFunction && userFunctions.length > 0) {
+    userFunctions.forEach(fnNode => {
+      if (!fnNode?.body) return;
+
+      const fnContext = context.fork();
+
+      // Process function body directly without creating start/end nodes
+      fnContext.handle = (node) => {
+        if (node && node.type) {
+          mapNodeCpp(node, fnContext);
+        }
+      };
+      walk(fnNode.body, fnContext);
+      delete fnContext.handle;
+
+      // Finalize function-specific context but don't add end node for subgraphs
+      finalizeFlowContext(fnContext, false);
+
+      const subgraphId = context.nextSubgraphId();
+      // Extract function name properly by splitting on '(' to remove parameters
+      const functionName = fnNode.name ? fnNode.name.split('(')[0].trim() : "anonymous";
+      const subgraphLabel = `${subgraphId}["function ${fnNode.name || "anonymous"}"]`;
+      const subgraphLines = [
+        ...fnContext.nodes,
+        ...fnContext.edges
+      ];
+
+      context.addSubgraph(subgraphLabel, subgraphLines);
+
+      // Store subgraph ID for function calls to reference
+      subgraphIds[functionName] = subgraphId;
+    });
+  }
+
+  // Store subgraph IDs in main context for function call connections
+  context.subgraphIds = subgraphIds;
+
+  // 8. Emit final Mermaid flowchart
   return context.emit();
+}
+
+function isMainFunction(node) {
+  if (!node?.name) return false;
+  const name = node.name.trim();
+  return name === 'main' || name === 'main()' || name.startsWith('main');
 }

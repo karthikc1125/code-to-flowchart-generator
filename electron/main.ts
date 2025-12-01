@@ -8,7 +8,7 @@ function createWindow() {
     width: 1200,
     height: 800,
     webPreferences: {
-      nodeIntegration: true,
+      nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js')
     }
@@ -16,7 +16,23 @@ function createWindow() {
 
   // In development, load from Vite dev server
   if (process.env.NODE_ENV === 'development') {
-    mainWindow.loadURL('http://localhost:5173');
+    // Try multiple ports in case the default is in use
+    const ports = [5173, 5174, 5175];
+    let portIndex = 0;
+    
+    const loadURL = () => {
+      mainWindow?.loadURL(`http://localhost:${ports[portIndex]}`);
+    };
+    
+    mainWindow.webContents.on('did-fail-load', () => {
+      if (portIndex < ports.length - 1) {
+        portIndex++;
+        loadURL();
+      }
+    });
+    
+    loadURL();
+    
     // Open DevTools in development
     mainWindow.webContents.openDevTools();
   } else {
@@ -25,17 +41,19 @@ function createWindow() {
   }
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  createWindow();
+  
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
+  });
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
-  }
-});
-
-app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
   }
 });
 
@@ -81,4 +99,4 @@ ipcMain.handle('convert-code', async (_, code: string) => {
 });
 
 // Set development mode
-process.env.NODE_ENV = 'development'; 
+process.env.NODE_ENV = 'development';

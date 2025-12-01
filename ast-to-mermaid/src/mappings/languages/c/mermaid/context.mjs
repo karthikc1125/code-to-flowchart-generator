@@ -2,6 +2,7 @@
 const createState = () => ({
   nodeId: 2,        // Start from 2 since N1 is reserved for start node
   subgraphId: 1,    // Counter for subgraphs
+  subgraphNodeId: 1, // Counter for subgraph nodes
 });
 
 export function ctx(sharedState = null) {
@@ -20,6 +21,8 @@ export function ctx(sharedState = null) {
     deferredStatements: [],
     ifStack: [],
     pendingJoins: [],
+    functionMap: {}, // Map of function names to their definitions
+    subgraphIds: {}, // Map of function names to their subgraph IDs
     
     next() {
       return `N${state.nodeId++}`;
@@ -27,6 +30,14 @@ export function ctx(sharedState = null) {
 
     nextSubgraphId() {
       return `SG${state.subgraphId++}`;
+    },
+    
+    nextSubgraphNode() {
+      // Use a separate counter for subgraph nodes
+      if (!state.subgraphNodeId) {
+        state.subgraphNodeId = 1;
+      }
+      return `SGN${state.subgraphNodeId++}`;
     },
     
     add(id, label) {
@@ -57,6 +68,59 @@ export function ctx(sharedState = null) {
       this.nodes.push(`subgraph ${label}`);
       lines.forEach(line => this.nodes.push(`  ${line}`));
       this.nodes.push('end');
+    },
+
+    // Add function to create connections between function calls and definitions
+    createFunctionConnections() {
+      // First handle explicitly stored function calls
+      if (this.functionCalls && this.subgraphIds) {
+        this.functionCalls.forEach(callInfo => {
+          const functionName = callInfo.functionName;
+          const callId = callInfo.callId;
+          
+          if (this.subgraphIds[functionName]) {
+            const subgraphId = this.subgraphIds[functionName];
+            // Add a bidirectional connection from the function call to the subgraph
+            this.edges.push(`${callId} <--> ${subgraphId}`);
+          }
+        });
+      }
+      
+      // Then scan through all nodes to find function calls in node texts
+      if (this.subgraphIds && this.nodes) {
+        // Create a map of function names to subgraph IDs for quick lookup
+        const functionRegex = /\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/g;
+        
+        this.nodes.forEach(nodeLine => {
+          // Check if this is a regular node (not a subgraph declaration)
+          if (nodeLine.startsWith('N') && !nodeLine.startsWith('subgraph')) {
+            // Extract the node ID (e.g., N5)
+            const nodeIdMatch = nodeLine.match(/^N\d+/);
+            if (nodeIdMatch) {
+              const nodeId = nodeIdMatch[0];
+              
+              // Look for function calls in the node text
+              const nodeText = nodeLine.substring(nodeId.length);
+              let match;
+              while ((match = functionRegex.exec(nodeText)) !== null) {
+                const functionName = match[1];
+                
+                // Skip common C functions that are not user-defined
+                if (['if', 'for', 'while', 'switch', 'return', 'break', 'continue', 'sizeof'].includes(functionName)) {
+                  continue;
+                }
+                
+                // Check if this is a user-defined function
+                if (this.subgraphIds[functionName]) {
+                  const subgraphId = this.subgraphIds[functionName];
+                  // Add a bidirectional connection from the node to the subgraph
+                  this.edges.push(`${nodeId} <--> ${subgraphId}`);
+                }
+              }
+            }
+          }
+        });
+      }
     },
 
     completeBranches() {
@@ -183,18 +247,12 @@ export function ctx(sharedState = null) {
     },
 
     completeSwitch() {
-      console.log('completeSwitch called');
-      console.log('  switchEndNodes:', JSON.stringify(this.switchEndNodes, null, 2));
-      console.log('  switchEndNodes length:', this.switchEndNodes?.length);
-      
       // Collect all edges that should connect to the next statement after switch
       const edges = [];
       
       // Current switch level is the length of switchEndNodes array minus 1
       // (since we push a placeholder when entering switch)
       const currentSwitchLevel = (this.switchEndNodes?.length || 1) - 1;
-      console.log('  currentSwitchLevel:', currentSwitchLevel);
-      console.log('  pendingBreaks before:', JSON.stringify(this.pendingBreaks, null, 2));
       
       // Track break IDs for this switch level to avoid duplicate connections
       const currentSwitchBreakIds = new Set();
@@ -204,7 +262,6 @@ export function ctx(sharedState = null) {
         const switchBreaks = this.pendingBreaks.filter(
           b => b.switchLevel === currentSwitchLevel
         );
-        console.log('  switchBreaks found:', switchBreaks.length);
         
         // Record break IDs for this switch level
         switchBreaks.forEach(b => currentSwitchBreakIds.add(b.breakId));
@@ -218,8 +275,6 @@ export function ctx(sharedState = null) {
         switchBreaks.forEach(b => {
           edges.push({ from: b.breakId, label: null });
         });
-      } else {
-        console.log('  No pending breaks or pendingBreaks is null');
       }
       
       // Add the last node if it exists and is not already a break statement
@@ -233,10 +288,6 @@ export function ctx(sharedState = null) {
         this.pendingJoins.push({ edges });
       }
       
-      console.log('  edges queued:', edges.length);
-      console.log('  pendingBreaks after:', JSON.stringify(this.pendingBreaks, null, 2));
-      console.log('  pendingJoins after:', JSON.stringify(this.pendingJoins, null, 2));
-      
       // Pop the switch end node placeholder
       if (this.switchEndNodes && this.switchEndNodes.length > 0) {
         this.switchEndNodes.pop();
@@ -247,7 +298,32 @@ export function ctx(sharedState = null) {
       // Don't clear this.last - it's needed for connecting to next statement
     },
     
+    completeLoop() {
+      // Connect the end of the loop body back to the loop condition
+      // Get the most recent pending loop
+      if (this.pendingLoops && this.pendingLoops.length > 0) {
+        const loopInfo = this.pendingLoops[this.pendingLoops.length - 1];
+        if (this.last && loopInfo.loopId) {
+          this.addEdge(this.last, loopInfo.loopId);
+        }
+        
+        // Update the last pointer to the loop condition node
+        // This ensures that the next statement connects from the loop as a whole
+        this.last = loopInfo.loopId;
+        
+        // Remove the processed loop
+        this.pendingLoops.pop();
+      }
+      
+      // Clear loop-specific context
+      this.inLoop = false;
+      this.loopContinueNode = null;
+    },
+    
     emit() {
+      // Create function connections before emitting
+      this.createFunctionConnections();
+      
       return [
         'flowchart TD',
         ...this.nodes,

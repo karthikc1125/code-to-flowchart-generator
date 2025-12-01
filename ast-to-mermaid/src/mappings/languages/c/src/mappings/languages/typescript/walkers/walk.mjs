@@ -1,0 +1,69 @@
+export function walk(node, ctx) {
+  if (!node) return;
+
+  // Handle the current node
+  if (ctx && typeof ctx.handle === 'function') {
+    ctx.handle(node);
+  }
+
+  // Recursively walk child nodes
+  // Special handling for Case and Default nodes to avoid duplicate processing
+  if (node.type === 'Case' || node.type === 'Default') {
+    // Process the body separately to avoid duplicate processing
+    if (node.body) {
+      if (Array.isArray(node.body)) {
+        node.body.forEach(child => walk(child, ctx));
+      } else {
+        walk(node.body, ctx);
+      }
+    }
+  } else if (node.type === 'Switch') {
+    // Process cases for switch statements
+    if (node.cases) {
+      if (Array.isArray(node.cases)) {
+        node.cases.forEach(child => walk(child, ctx));
+      } else {
+        walk(node.cases, ctx);
+      }
+    }
+    // Complete the switch after processing all cases
+    if (ctx && typeof ctx.completeSwitch === 'function') {
+      ctx.completeSwitch();
+    }
+    return; // Important: return to avoid processing node.body, node.then, node.else
+  } else if (node.type === 'For' || node.type === 'While' || node.type === 'DoWhile') {
+    // Process loop body with array handling to match C/JavaScript pattern
+    if (node.body) {
+      if (Array.isArray(node.body)) {
+        node.body.forEach(child => walk(child, ctx));
+      } else {
+        walk(node.body, ctx);
+      }
+    }
+    
+    // Complete the loop after processing the body
+    if (ctx && typeof ctx.completeLoop === 'function') {
+      ctx.completeLoop();
+    }
+    return; // Important: return to avoid processing node.body, node.then, node.else
+  } else {
+    // General body processing for other node types
+    if (node.body) {
+      if (Array.isArray(node.body)) {
+        node.body.forEach(child => walk(child, ctx));
+      } else {
+        walk(node.body, ctx);
+      }
+    }
+  }
+  
+  if (node.then) walk(node.then, ctx);
+  if (node.else) walk(node.else, ctx);
+  // Note: We don't walk node.init, node.cond, node.update here
+  // because they are handled by the mapping functions that create
+  // decision nodes with combined text
+
+  if (node.value) {
+    // return statements
+  }
+}

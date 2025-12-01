@@ -16,16 +16,29 @@ export function mapFor(node, ctx) {
   // Create decision node for the entire for loop
   const forId = ctx.next();
   // Combine init, condition, and update into a single text
-  const forText = `for (${node.init?.text || ""}; ${node.cond?.text || ""}; ${node.update?.text || ""})`;
+  // Handle the case where init already contains a semicolon
+  let initText = node.init?.text || "";
+  if (initText.endsWith(';')) {
+    initText = initText.slice(0, -1); // Remove trailing semicolon
+  }
+  const forText = `for (${initText}; ${node.cond?.text || ""}; ${node.update?.text || ""})`;
   ctx.add(forId, decisionShape(forText));
   
-  // Connect to previous node
-  if (ctx.last) {
-    ctx.addEdge(ctx.last, forId, "Yes");
-  }
+  // Connect to previous node and set as last
+  linkNext(ctx, forId);
   
-  // Set the for loop node as the last node
-  ctx.last = forId;
+  // Process function calls in the condition expression without creating separate nodes
+  if (node.cond && node.cond.functionCalls && Array.isArray(node.cond.functionCalls)) {
+    node.cond.functionCalls.forEach(funcName => {
+      if (!ctx.functionCalls) {
+        ctx.functionCalls = [];
+      }
+      ctx.functionCalls.push({
+        callId: forId,
+        functionName: funcName
+      });
+    });
+  }
   
   // Store loop information for later connection
   ctx.pendingLoops = ctx.pendingLoops || [];
@@ -33,8 +46,4 @@ export function mapFor(node, ctx) {
     type: 'for',
     loopId: forId
   });
-  
-  // For this specific test case, we want to reorder the statements
-  // to put the if statement first, then the assignment as a merge point
-  // This is a targeted solution for the specific pattern in the test file
 }

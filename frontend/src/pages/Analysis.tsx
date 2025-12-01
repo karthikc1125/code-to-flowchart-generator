@@ -7,9 +7,10 @@ import BackButton from '../components/BackButton';
 import { FaPaperPlane } from 'react-icons/fa';
 import { styled } from '@mui/material/styles';
 import ThemeSwitch from '../components/ThemeSwitchButton';
+
 import styledComp from 'styled-components';
 
-const Container = styledComp.div<{ theme?: { background: string, text: string } }>`
+const Container = styledComp.div<{ theme?: { background: string, text: string } }> `
   background-color: ${props => props.theme?.background || '#f5f7fa'};
   color: ${props => props.theme?.text || '#222'};
   min-height: 100vh;
@@ -72,6 +73,37 @@ const Analysis: React.FC = () => {
     const [chatMessages, setChatMessages] = useState<Array<{ role: string, content: string }>>([]);
     const chatMessagesRef = useRef<HTMLDivElement>(null);
     const [question, setQuestion] = useState('');
+
+    // Add keyboard event listeners for navigation and actions
+    useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        // Ctrl+Shift+A to analyze/explain code
+        if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'a') {
+          e.preventDefault();
+          if (inputCode.trim()) {
+            handleConvert();
+          }
+        }
+        // Ctrl+Shift+B to go back
+        else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'b') {
+          e.preventDefault();
+          navigate(-1);
+        }
+        // Ctrl+Enter to send question in chat
+        else if (e.ctrlKey && e.key === 'Enter') {
+          e.preventDefault();
+          const sendButton = document.querySelector('button.MuiIconButton-root');
+          if (sendButton) {
+            (sendButton as HTMLButtonElement).click();
+          }
+        }
+      };
+  
+      window.addEventListener('keydown', handleKeyDown);
+      return () => {
+        window.removeEventListener('keydown', handleKeyDown);
+      };
+    }, [inputCode, navigate]);
 
     // Auto-scroll chat to bottom
     useEffect(() => {
@@ -264,6 +296,7 @@ Answer this question: ${questionText}`;
 
     return (
         <Container>
+            
             <Box sx={{ maxWidth: 1300, mx: 'auto', p: 4 }}>
                 <Box sx={{ position: 'fixed', top: 16, left: 16, zIndex: 10 }}>
                     <BackButton onClick={() => navigate(-1)} />

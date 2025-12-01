@@ -6,9 +6,10 @@ import BackButton from '../components/BackButton';
 import { convertCodeToMermaid } from '../services/api';
 import { styled } from '@mui/material/styles';
 import ThemeSwitch from '../components/ThemeSwitchButton';
+
 import styledComp from 'styled-components';
 
-const Container = styledComp.div<{ theme?: { background: string, text: string } }>`
+const Container = styledComp.div<{ theme?: { background: string, text: string } }> `
   background-color: ${props => props.theme?.background || '#f5f7fa'};
   color: ${props => props.theme?.text || '#222'};
   min-height: 100vh;
@@ -24,6 +25,47 @@ const CodeEntry: React.FC = () => {
     const location = useLocation();
     const inputEditorRef = useRef<any>(null);
     const outputEditorRef = useRef<any>(null);
+
+    // Add keyboard event listeners for navigation and actions
+    useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        // Ctrl+Shift+E to explain code
+        if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'e') {
+          e.preventDefault();
+          if (inputCode.trim()) {
+            navigate('/analysis', { state: { code: inputCode } });
+          }
+        }
+        // Ctrl+Shift+V to convert code
+        else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'v') {
+          e.preventDefault();
+          // Trigger convert action
+          const convertButton = document.querySelector('button.MuiButton-contained');
+          if (convertButton) {
+            (convertButton as HTMLButtonElement).click();
+          }
+        }
+        // Ctrl+Shift+O to open in Mermaid editor
+        else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'o') {
+          e.preventDefault();
+          // Trigger open in Mermaid editor action
+          const openButton = document.querySelector('button.MuiButton-outlined');
+          if (openButton) {
+            (openButton as HTMLButtonElement).click();
+          }
+        }
+        // Ctrl+Shift+B to go back
+        else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'b') {
+          e.preventDefault();
+          navigate(-1);
+        }
+      };
+  
+      window.addEventListener('keydown', handleKeyDown);
+      return () => {
+        window.removeEventListener('keydown', handleKeyDown);
+      };
+    }, [inputCode, navigate]);
 
     // Handle incoming code from WriteWithAI page
     useEffect(() => {
@@ -150,6 +192,7 @@ const CodeEntry: React.FC = () => {
 
     return (
         <Container>
+            
             <Box sx={{ maxWidth: 1300, mx: 'auto', p: 4 }}>
                 <Box sx={{ position: 'fixed', top: 16, left: 16, zIndex: 10 }}>
                     <BackButton onClick={() => navigate(-1)} />
@@ -206,13 +249,7 @@ const CodeEntry: React.FC = () => {
                                 >
                                     Import
                                 </Button>
-                                <Button
-                                    variant="outlined"
-                                    size="small"
-                                    onClick={() => navigate('/write-with-ai')}
-                                >
-                                    AI
-                                </Button>
+                                
                             </Box>
                         </Box>
                         <Editor
@@ -259,7 +296,7 @@ const CodeEntry: React.FC = () => {
                             >
                                 Explain Code
                             </Button>
-                        </Box>
+                                            </Box>
                     </Box>
                     <Box sx={{ flex: 1, minWidth: 0 }}>
                         <Typography variant="subtitle1" gutterBottom fontWeight={600}>

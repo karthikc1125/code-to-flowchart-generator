@@ -7,12 +7,13 @@ export const shapes = {
   rectangle: '[[{}]]',
   round: '({})',
   circle: '(({}))',
-  rhombus: '{{{}}}',
+  rhombus: '{"{}"}',
+  decision: '{"{}"}',
   
   // Additional shapes
   hexagon: '{{{}}}',
   database: '[[{}]]',
-  parallelogram: '[/{}\\]',
+  parallelogram: '[/{}/]',
   
   // Standard box (rectangle)
   box: '[{}]',

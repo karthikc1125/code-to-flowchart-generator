@@ -23,6 +23,6 @@ export const shapes = {
   process: createShape('["{}"]'),
   decision: createShape('{"{}"}'),
   io: createShape('[/"{}"/]'),
-  return: createShape('>"{}"]'),
+  return: createShape('>["{}"]'),
   function: createShape('[["{}"]]')
 };

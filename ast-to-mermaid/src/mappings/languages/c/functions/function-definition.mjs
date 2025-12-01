@@ -23,4 +23,7 @@ export function mapFunction(node, ctx) {
   
   // Connect to previous node and set as last
   linkNext(ctx, functionId);
+  
+  // Note: Function body will be processed by the walker separately
+  // The function body statements will be mapped as regular statements
 }

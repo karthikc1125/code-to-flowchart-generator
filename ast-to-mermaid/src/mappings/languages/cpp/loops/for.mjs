@@ -25,4 +25,11 @@ export function mapFor(node, ctx) {
   
   // Connect to previous node using shared linking logic
   linkNext(ctx, forId);
+  
+  // Store loop information for later connection
+  ctx.pendingLoops = ctx.pendingLoops || [];
+  ctx.pendingLoops.push({
+    type: 'for',
+    loopId: forId
+  });
 }

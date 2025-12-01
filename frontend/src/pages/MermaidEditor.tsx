@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import mermaid from 'mermaid';
 import { FiDownload, FiArrowLeft, FiZoomIn, FiZoomOut, FiMaximize2 } from 'react-icons/fi';
@@ -7,7 +7,7 @@ import html2canvas from 'html2canvas';
 import ThemeSwitch from '../components/ThemeSwitchButton';
 import styled from 'styled-components';
 
-const Container = styled.div<{ theme?: { background: string, text: string } }>`
+const Container = styled.div<{ theme?: { background: string, text: string } }> `
   background-color: ${props => props.theme?.background || '#f5f7fa'};
   color: ${props => props.theme?.text || '#222'};
   min-height: 100vh;
@@ -34,6 +34,39 @@ const MermaidEditor: React.FC = () => {
     }
   }, [location.state]);
 
+  // Define zoom functions
+  const handleZoomIn = useCallback(() => {
+    console.log('Zoom in function called');
+    setZoom(prev => Math.min(prev + 0.2, 3));
+  }, []);
+  
+  const handleZoomOut = useCallback(() => {
+    console.log('Zoom out function called');
+    setZoom(prev => Math.max(prev - 0.2, 0.5));
+  }, []);
+  
+  const handleResetZoom = useCallback(() => {
+    console.log('Reset zoom function called');
+    setZoom(1);
+  }, []);
+
+  // Add keyboard event listeners for zooming
+  useEffect(() => {
+    console.log('Adding zoom event listeners');
+    
+    // Listen for custom zoom events
+    window.addEventListener('zoomIn', handleZoomIn);
+    window.addEventListener('zoomOut', handleZoomOut);
+    window.addEventListener('resetZoom', handleResetZoom);
+
+    return () => {
+      console.log('Removing zoom event listeners');
+      window.removeEventListener('zoomIn', handleZoomIn);
+      window.removeEventListener('zoomOut', handleZoomOut);
+      window.removeEventListener('resetZoom', handleResetZoom);
+    };
+  }, [handleZoomIn, handleZoomOut, handleResetZoom]);
+
   useEffect(() => {
     mermaid.initialize({
       startOnLoad: false,
@@ -43,7 +76,11 @@ const MermaidEditor: React.FC = () => {
         useMaxWidth: true,
         htmlLabels: true,
         curve: 'basis'
-      }
+      },
+      // Reduce logging
+      logLevel: 3,
+      // Suppress error rendering
+      suppressErrorRendering: true
     });
   }, []);
 
@@ -78,10 +115,6 @@ const MermaidEditor: React.FC = () => {
       }
     }
   };
-
-  const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.2, 3));
-  const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.2, 0.5));
-  const handleResetZoom = () => setZoom(1);
 
   const exportDiagram = async (format: 'svg' | 'png' | 'pdf') => {
     if (!previewRef.current) {
@@ -199,11 +232,13 @@ const MermaidEditor: React.FC = () => {
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '12px 24px',
+        justifyContent: 'flex-start',
+        padding: '12px 16px',
         borderBottom: '1px solid #e5e7eb',
         backgroundColor: 'inherit',
-        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+        flexWrap: 'wrap',
+        gap: '16px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <button
@@ -245,7 +280,7 @@ const MermaidEditor: React.FC = () => {
           </h1>
         </div>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           {/* Zoom Controls */}
           <div style={{
             display: 'flex',
@@ -483,4 +518,4 @@ const MermaidEditor: React.FC = () => {
   );
 };
 
-export default MermaidEditor; 
+export default MermaidEditor;

@@ -5,12 +5,12 @@ import { ctx } from '../../c/mermaid/context.mjs';
 
 // Import mapping functions (reusing C mapping functions since they're similar)
 import { mapIf } from '../../c/conditional/if.mjs';
-import { mapFor } from '../../c/loops/for.mjs';
-import { mapWhile } from '../../c/loops/while.mjs';
+import { mapFor } from '../loops/map-for.mjs';
+import { mapWhile } from '../loops/map-while.mjs';
 import { mapFunction } from '../../c/functions/function-definition.mjs';
 import { mapReturn } from '../../c/other-statements/return.mjs';
 import { mapAssign } from '../../c/other-statements/assign.mjs';
-import { mapIO } from '../../c/io/io.mjs';
+import { mapIO } from '../io/io.mjs';
 import { mapDecl } from '../../c/other-statements/declaration.mjs';
 import { mapExpr } from '../../c/other-statements/expression.mjs';
 import { mapMatch, mapCase, mapDefault } from '../conditional/switch/switch.mjs';

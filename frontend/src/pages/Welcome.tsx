@@ -1,7 +1,77 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiZap, FiCode, FiGitBranch, FiDownload, FiPlay } from 'react-icons/fi';
-import styles from '../styles/Welcome.module.css';
+import { FiZap, FiCode, FiGitBranch, FiDownload, FiPlay, FiArrowLeft } from 'react-icons/fi';
+import ThemeSwitch from '../components/ThemeSwitchButton';
+
+import styled from 'styled-components';
+
+const Container = styled.div<{ theme?: { background: string, text: string } }> `
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: ${props => props.theme?.background || '#f5f7fa'};
+  padding: 1rem;
+  color: ${props => props.theme?.text || '#222'};
+`;
+
+const Title = styled.h1<{ theme?: { text: string } }> `
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: ${props => props.theme?.text || '#1f2937'};
+  margin-bottom: 1rem;
+  text-align: center;
+`;
+
+const Subtitle = styled.p<{ theme?: { text: string } }> `
+  font-size: 1.5rem;
+  color: ${props => props.theme?.text || '#4b5563'};
+  margin-bottom: 2rem;
+  text-align: center;
+`;
+
+const ButtonContainer = styled.div`
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+`;
+
+const StartButton = styled.button`
+  padding: 0.75rem 1.5rem;
+  background-color: #3b82f6;
+  color: white;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+
+  &:hover {
+    background-color: #2563eb;
+  }
+`;
+
+const BackButton = styled.button`
+  padding: 0.75rem 1.5rem;
+  background-color: #6b7280;
+  color: white;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+
+  &:hover {
+    background-color: #4b5563;
+  }
+`;
 
 const Welcome: React.FC = () => {
   const navigate = useNavigate();
@@ -10,19 +80,49 @@ const Welcome: React.FC = () => {
     navigate('/instructions');
   };
 
+  const handleGoBack = () => {
+    navigate('/');
+  };
+
+  // Add keyboard event listeners for navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+Shift+G to go back to college page
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'g') {
+        e.preventDefault();
+        navigate('/');
+      }
+      // Ctrl+Shift+S to get started
+      else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        navigate('/instructions');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [navigate]);
+
   return (
-    <div className={styles.container}>
-      <header className={styles.header}>
-        <h1 className={styles.title}>Code → Mermaid Flowcharts</h1>
-        <p className={styles.subtitle}>
+    <Container>
+      <ThemeSwitch />
+      <header style={{ textAlign: 'center', marginBottom: '2rem' }}>
+        <Title>Code → Mermaid Flowcharts</Title>
+        <Subtitle>
           This tool converts valid source code into flowcharts. Please ensure your code is correct and complete for best results.
-        </p>
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <button onClick={handleGetStarted} className={styles.button}>
+        </Subtitle>
+        <ButtonContainer>
+          <BackButton onClick={handleGoBack}>
+            <FiArrowLeft style={{ marginRight: 8 }} />
+            Back to College Page
+          </BackButton>
+          <StartButton onClick={handleGetStarted}>
             <FiPlay style={{ marginRight: 8 }} />
             Get Started
-          </button>
-        </div>
+          </StartButton>
+        </ButtonContainer>
       </header>
 
       <section style={{ maxWidth: 1100, margin: '32px auto 0', padding: '0 16px' }}>
@@ -63,7 +163,7 @@ const Welcome: React.FC = () => {
           </div>
         </div>
       </section>
-    </div>
+    </Container>
   );
 };
 

@@ -16,19 +16,48 @@ const DiagramPreview: React.FC<DiagramPreviewProps> = ({ code, isLoading = false
   const [showExportMenu, setShowExportMenu] = useState(false);
 
   useEffect(() => {
-    if (previewRef.current && !isLoading && shouldRender) {
-      previewRef.current.innerHTML = '';
-      const diagramDiv = document.createElement('div');
-      diagramDiv.className = 'mermaid';
-      diagramDiv.textContent = code;
-      previewRef.current.appendChild(diagramDiv);
-      
-      mermaid.init(undefined, diagramDiv).then(() => {
-        console.log('Mermaid diagram rendered successfully');
-      }).catch((error) => {
-        console.error('Mermaid rendering failed:', error);
-      });
-    }
+    // Initialize mermaid with proper configuration to hide version info
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'default',
+      securityLevel: 'loose',
+      flowchart: {
+        useMaxWidth: true,
+        htmlLabels: true,
+        curve: 'basis'
+      },
+      // Reduce logging
+      logLevel: 3,
+      // Suppress error rendering
+      suppressErrorRendering: true
+    });
+  }, []);
+
+  useEffect(() => {
+    const renderDiagram = async () => {
+      if (previewRef.current && !isLoading && shouldRender && code.trim()) {
+        try {
+          previewRef.current.innerHTML = '';
+          
+          // Create a unique ID for each diagram to avoid conflicts
+          const uniqueId = `mermaid-${Date.now()}`;
+          
+          // Use mermaid.render instead of init for better control
+          const { svg } = await mermaid.render(uniqueId + '-svg', code);
+          previewRef.current.innerHTML = svg;
+          
+          console.log('Mermaid diagram rendered successfully');
+        } catch (err: any) {
+          const errorMessage = err?.message || err?.toString() || 'Error rendering diagram';
+          console.error('Mermaid rendering failed:', errorMessage);
+          if (previewRef.current) {
+            previewRef.current.innerHTML = `<div style="color: #ef4444; padding: 20px; text-align: center; font-size: 14px;">⚠️ ${errorMessage}</div>`;
+          }
+        }
+      }
+    };
+    
+    renderDiagram();
   }, [code, isLoading, shouldRender]);
 
   // Close export menu when clicking outside
@@ -322,4 +351,4 @@ const DiagramPreview: React.FC<DiagramPreviewProps> = ({ code, isLoading = false
   );
 };
 
-export default DiagramPreview; 
+export default DiagramPreview;

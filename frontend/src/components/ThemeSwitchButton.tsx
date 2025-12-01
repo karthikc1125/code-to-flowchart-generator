@@ -5,8 +5,8 @@ import { Sun, Moon } from 'lucide-react';
 
 const ThemeSwitchButton = styled.button`
   position: fixed;
-  top: 20px;
-  right: 20px;
+  top: 16px;
+  right: 16px;
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -30,12 +30,30 @@ const ThemeSwitchButton = styled.button`
   }
 `;
 
+const GlowingSun = styled(Sun)`
+  color: #fcd34d; /* light orange/yellow */
+  filter: drop-shadow(0 0 4px #fcd34d) drop-shadow(0 0 8px #fcd34d);
+  animation: pulse 2s infinite;
+  
+  @keyframes pulse {
+    0% {
+      filter: drop-shadow(0 0 4px #fcd34d) drop-shadow(0 0 8px #fcd34d);
+    }
+    50% {
+      filter: drop-shadow(0 0 6px #fcd34d) drop-shadow(0 0 12px #fcd34d);
+    }
+    100% {
+      filter: drop-shadow(0 0 4px #fcd34d) drop-shadow(0 0 8px #fcd34d);
+    }
+  }
+`;
+
 const ThemeSwitch: React.FC = () => {
   const { toggle, mode } = useThemeToggle();
   
   return (
     <ThemeSwitchButton onClick={toggle} aria-label="Toggle theme">
-      {mode === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+      {mode === 'dark' ? <GlowingSun size={20} /> : <Moon size={20} />}
     </ThemeSwitchButton>
   );
 };
