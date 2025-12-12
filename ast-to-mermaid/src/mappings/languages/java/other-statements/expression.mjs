@@ -8,6 +8,9 @@ const processShape = (text) => shapes.process.replace('{}', text);
 // Helper function to create IO shape with text
 const ioShape = (text) => shapes.io.replace('{}', text);
 
+// Helper function to create function call shape with text
+const functionCallShape = (text) => shapes.function.replace('{}', text);
+
 // Helper function to generate text representation of a node
 function generateNodeText(node) {
   if (!node) return "expression";
@@ -46,9 +49,7 @@ export function mapExpr(node, ctx) {
   // Check if this is a System.out.print/println statement
   if (node.expression && node.expression.type === 'CallExpression' &&
       node.expression.callee && node.expression.callee.object && 
-      node.expression.callee.object.name === 'System' &&
-      node.expression.callee.property && 
-      (node.expression.callee.property.name === 'out')) {
+      node.expression.callee.object.name === 'System.out') {
     // Create IO node directly for System.out statements
     const ioId = ctx.next();
     
@@ -109,6 +110,15 @@ export function mapExpr(node, ctx) {
       } else {
         exprText = node.expression.callee.property.name;
       }
+    } else if (node.expression.name) {
+      // Handle general function calls
+      exprText = node.expression.name;
+      if (node.expression.arguments && node.expression.arguments.length > 0) {
+        const argTexts = node.expression.arguments.map(arg => generateNodeText(arg));
+        exprText = `${exprText}(${argTexts.join(", ")})`;
+      } else {
+        exprText = `${exprText}()`;
+      }
     } else if (node.expression.text) {
       exprText = node.expression.text;
     }
@@ -126,8 +136,12 @@ export function mapExpr(node, ctx) {
   let shape;
   if (node.expression && node.expression.type === 'CallExpression' &&
       node.expression.callee && node.expression.callee.object && 
-      node.expression.callee.object.name === 'System') {
+      node.expression.callee.object.name === 'System.out') {
     shape = ioShape(exprText);
+  } else if (node.expression && node.expression.type === 'CallExpression' &&
+             node.expression.name) {
+    // For general function calls, use double rectangle shape
+    shape = functionCallShape(exprText);
   } else {
     shape = processShape(exprText);
   }

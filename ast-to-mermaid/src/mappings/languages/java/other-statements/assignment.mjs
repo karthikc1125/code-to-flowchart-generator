@@ -29,6 +29,24 @@ export function mapAssignment(node, ctx) {
         assignText = `${node.left.name} = ${node.right.callee.property.name}`;
       }
     }
+    // Handle function calls
+    else if (node.right.type === 'CallExpression' && node.right.name) {
+      assignText = `${node.left.name} = ${node.right.name}`;
+      if (node.right.arguments && node.right.arguments.length > 0) {
+        const argTexts = node.right.arguments.map(arg => {
+          if (arg && arg.type === 'Literal') {
+            return arg.value;
+          } else if (arg && arg.type === 'Identifier') {
+            return arg.name;
+          } else {
+            return "expression";
+          }
+        });
+        assignText = `${node.left.name} = ${node.right.name}(${argTexts.join(", ")})`;
+      } else {
+        assignText = `${node.left.name} = ${node.right.name}()`;
+      }
+    }
     // Handle arithmetic operations
     else if (node.right.type === 'BinaryExpression') {
       const left = node.left.name || node.left.text || "var";

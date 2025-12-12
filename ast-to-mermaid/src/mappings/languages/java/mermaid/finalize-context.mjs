@@ -1,12 +1,15 @@
-export function finalizeFlowContext(context) {
+export function finalizeFlowContext(context, addEndNode = true) {
   if (!context) return null;
 
   if (typeof context.completeBranches === 'function') {
     context.completeBranches();
   }
 
-  const endId = context.next();
-  context.add(endId, '(["end"])');
+  let endId = null;
+  if (addEndNode) {
+    endId = context.next();
+    context.add(endId, '(["end"])');
+  }
 
   // Handle if-else-if chains properly
   // In if-else-if chains, the No branches should connect to the next condition,
@@ -254,10 +257,12 @@ export function finalizeFlowContext(context) {
     joins.forEach(join => {
       join.edges.forEach(({ from, label }) => {
         if (!from) return;
-        if (label) {
-          context.addEdge(from, endId, label);
-        } else {
-          context.addEdge(from, endId);
+        if (addEndNode && endId) {
+          if (label) {
+            context.addEdge(from, endId, label);
+          } else {
+            context.addEdge(from, endId);
+          }
         }
       });
     });
@@ -266,17 +271,21 @@ export function finalizeFlowContext(context) {
   // Note: pendingBreaks should be empty here if completeSwitch was called properly
   // Only connect breaks that are still pending (shouldn't happen in normal flow)
   if (context.pendingBreaks && context.pendingBreaks.length > 0) {
-    context.pendingBreaks.forEach(breakInfo => {
-      // Connect orphaned breaks directly to end
-      context.addEdge(breakInfo.breakId, endId);
-    });
+    if (addEndNode && endId) {
+      context.pendingBreaks.forEach(breakInfo => {
+        // Connect orphaned breaks directly to end
+        context.addEdge(breakInfo.breakId, endId);
+      });
+    }
     context.pendingBreaks = [];
   }
 
   // Note: Default case without break also needs to connect to next statement
   // But only if there are no pending joins (which would handle this connection)
   if (context.last && (!context.pendingJoins || context.pendingJoins.length === 0)) {
-    context.addEdge(context.last, endId);
+    if (addEndNode && endId) {
+      context.addEdge(context.last, endId);
+    }
   }
 
   return endId;

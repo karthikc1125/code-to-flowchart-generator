@@ -31,6 +31,9 @@ export function normalizeJava(ast) {
         }
         
         if (classBody && classBody.type === 'class_body') {
+          const methods = [];
+          const mainStatements = [];
+          
           // Look for method declarations in the class body
           for (let j = 0; j < classBody.childCount; j++) {
             const member = classBody.child(j);
@@ -53,44 +56,63 @@ export function normalizeJava(ast) {
                 }
               }
               
-              // Look for the main method
-              if (methodName && methodName === 'main') {
-                // Safely get method body
-                let methodBody = null;
-                if (typeof member.childForFieldName === 'function') {
-                  methodBody = member.childForFieldName('body');
-                } else {
-                  // Fallback: try to find body by iterating children
-                  for (let k = 0; k < member.childCount; k++) {
-                    const bodyChild = member.child(k);
-                    if (bodyChild && bodyChild.type === 'block') {
-                      methodBody = bodyChild;
-                      break;
+              // Safely get method body
+              let methodBody = null;
+              if (typeof member.childForFieldName === 'function') {
+                methodBody = member.childForFieldName('body');
+              } else {
+                // Fallback: try to find body by iterating children
+                for (let k = 0; k < member.childCount; k++) {
+                  const bodyChild = member.child(k);
+                  if (bodyChild && bodyChild.type === 'block') {
+                    methodBody = bodyChild;
+                    break;
+                  }
+                }
+              }
+              
+              if (methodBody && methodBody.type === 'block') {
+                const statements = [];
+                // Process statements in the method body
+                for (let k = 0; k < methodBody.childCount; k++) {
+                  const stmt = methodBody.child(k);
+                  // Skip braces
+                  if (stmt && stmt.type !== '{' && stmt.type !== '}') {
+                    const normalized = normalizeNode(stmt);
+                    if (normalized) {
+                      statements.push(normalized);
                     }
                   }
                 }
                 
-                if (methodBody && methodBody.type === 'block') {
-                  const statements = [];
-                  // Process statements in the method body
-                  for (let k = 0; k < methodBody.childCount; k++) {
-                    const stmt = methodBody.child(k);
-                    // Skip braces
-                    if (stmt && stmt.type !== '{' && stmt.type !== '}') {
-                      const normalized = normalizeNode(stmt);
-                      if (normalized) {
-                        statements.push(normalized);
-                      }
-                    }
-                  }
-                  return {
-                    type: 'Program',
+                // Create method definition node
+                const methodNode = {
+                  type: 'MethodDeclaration',
+                  name: methodName,
+                  body: {
+                    type: 'BlockStatement',
                     body: statements
-                  };
+                  }
+                };
+                
+                // Store main method statements separately
+                if (methodName && methodName === 'main') {
+                  mainStatements.push(...statements);
                 }
+                
+                methods.push(methodNode);
               }
             }
           }
+          
+          // Return program with main statements and all method definitions
+          return {
+            type: 'Program',
+            body: [
+              ...mainStatements,
+              ...methods
+            ]
+          };
         }
       }
     }
@@ -598,28 +620,60 @@ function normalizeNode(node) {
         }
       } else {
         // Fallback: iterate through children
+        // For method_invocation, the structure is typically:
+        // identifier (method name) or field_access (object.method)
+        // argument_list (optional)
         for (let i = 0; i < node.childCount; i++) {
           const child = node.child(i);
-          if (child && child.type === 'identifier') {
-            // First identifier is the object, second is the method name
-            if (!object) {
-              object = child.text;
-            } else if (!name) {
-              name = child.text;
-            }
+          if (child && child.type === 'identifier' && !name) {
+            // This is the method name (for direct calls like add(5, 10))
+            name = child.text;
           } else if (child && child.type === 'field_access') {
-            object = child.text;
+            // This is an object.method call like System.out.println
+            // field_access typically has structure: object.identifier
+            let objectName = null;
+            let propertyName = null;
+            for (let j = 0; j < child.childCount; j++) {
+              const grandChild = child.child(j);
+              if (grandChild && grandChild.type === 'identifier') {
+                if (!objectName) {
+                  objectName = grandChild.text;
+                } else {
+                  propertyName = grandChild.text;
+                }
+              }
+            }
+            
+            // If we have both object and property, construct the full object name
+            if (objectName && propertyName) {
+              object = `${objectName}.${propertyName}`;  // e.g., "System.out"
+              // The actual method name should be found in another child
+            } else if (objectName) {
+              object = objectName;
+            }
           } else if (child && child.type === 'argument_list') {
             args = Array.from(child.children)
                     .filter(c => c.type !== '(' && c.type !== ')' && c.type !== ',')
                     .map(normalizeNode);
           }
         }
+        
+        // If we didn't find name from field_access, look for it in children
+        if (!name) {
+          for (let i = 0; i < node.childCount; i++) {
+            const child = node.child(i);
+            if (child && child.type === 'identifier') {
+              name = child.text;
+              break;
+            }
+          }
+        }
       }
       
       if (name) {
         // Handle System.out.println/printf calls
-        if (object && object.includes('System.out') && 
+        // The object is now "System.out" and name is the actual method name
+        if (object && object === 'System.out' && 
             (name === 'println' || name === 'print' || name === 'printf')) {
           // Create a more descriptive text for the print statement
           let printText = name;
@@ -638,8 +692,7 @@ function normalizeNode(node) {
           return {
             type: 'CallExpression',
             callee: {
-              object: { name: 'System' },
-              property: { name: 'out' }
+              object: { name: 'System.out' }
             },
             arguments: args,
             text: printText
@@ -672,6 +725,66 @@ function normalizeNode(node) {
             };
           }
         }
+        
+        // Handle general function calls
+        // If there's no object, this is a direct function call
+        if (!object) {
+          // Create a more descriptive text with arguments
+          let callText = name;
+          if (args.length > 0) {
+            const argTexts = args.map(arg => {
+              if (arg && arg.type === 'Literal') {
+                return arg.value;
+              } else if (arg && arg.type === 'Identifier') {
+                return arg.name;
+              } else {
+                return "expression";
+              }
+            });
+            callText = `${name}(${argTexts.join(", ")})`;
+          } else {
+            callText = `${name}()`;
+          }
+          
+          return {
+            type: 'CallExpression',
+            callee: {
+              name: name
+            },
+            arguments: args,
+            name: name,
+            text: callText
+          };
+        }
+        
+        // If there's an object but it's not System.out or Scanner, create a general call expression
+        // Create a more descriptive text with arguments
+        let callText = `${object}.${name}`;
+        if (args.length > 0) {
+          const argTexts = args.map(arg => {
+            if (arg && arg.type === 'Literal') {
+              return arg.value;
+            } else if (arg && arg.type === 'Identifier') {
+              return arg.name;
+            } else {
+              return "expression";
+            }
+          });
+          callText = `${object}.${name}(${argTexts.join(", ")})`;
+        } else {
+          callText = `${object}.${name}()`;
+        }
+        
+        return {
+          type: 'CallExpression',
+          callee: {
+            object: { name: object },
+            property: { name: name }
+          },
+          arguments: args,
+          name: name,
+          text: callText
+        };
       }
       return null;
       

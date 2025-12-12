@@ -18,6 +18,8 @@ import { mapExpr } from '../other-statements/expression.mjs';
 import { mapIncDecStatement } from '../other-statements/inc-dec.mjs';
 import { mapReturn } from '../other-statements/return.mjs';
 import { mapIoStatement } from '../io/io.mjs';
+import { mapFunctionDefinition } from '../functions/function-definition.mjs';
+import { mapFunctionCall } from '../functions/function-call.mjs';
 
 /**
  * Check if a node represents executable logic that should be included in the flowchart
@@ -77,6 +79,13 @@ function isExecutableLogic(node) {
   }
   
   return false;
+}
+
+function isMainMethod(node) {
+  if (!node?.name) return false;
+  const name = node.name;
+  // Check if this is the main method
+  return name === 'main';
 }
 
 /**
@@ -221,7 +230,11 @@ export function mapNodeJava(node, ctx) {
           (node.callee.property.name === 'out')) {
         return mapIoStatement(node, ctx);
       }
-      break;
+      // Handle function calls
+      return mapFunctionCall(node, ctx);
+    case "MethodDeclaration":
+      // Handle method definitions
+      return mapFunctionDefinition(node, ctx);
   }
 }
 
@@ -245,41 +258,81 @@ export function generateFlowchart(sourceCode) {
   context.add('N1', '(["start"])');
   context.setLast('N1');
   
-  // 4. Walk and generate nodes using mapping functions
+  // 4. Identify functions (main + user-defined)
+  let mainFunction = null;
+  const userFunctions = [];
+
   if (normalized) {
-    // Find the main program and process its body directly
-    let mainProgramBody = null;
-    
-    // Check if normalized is the main program itself
-    if (normalized.type === 'Program' || normalized.type === 'Block') {
-      mainProgramBody = normalized.body;
-    }
-    
-    // Extract only executable statements, ignoring boilerplate
-    const executableStatements = extractExecutableStatements(mainProgramBody);
-    
-    // If we found executable statements, process them
-    if (executableStatements && executableStatements.length > 0) {
-      // Create a walker context that uses the mapping functions
-      const walkerContext = {
-        handle: (node) => {
-          if (node && node.type) {
-            // Use the mapping function to add nodes to the context
-            mapNodeJava(node, context);
+    const collectFunctions = {
+      handle: (node) => {
+        if (node && node.type === 'MethodDeclaration') {
+          if (isMainMethod(node)) {
+            mainFunction = node;
+          } else {
+            userFunctions.push(node);
           }
         }
-      };
-      
-      // Walk each executable statement
-      executableStatements.forEach((node, index) => {
-        walk(node, walkerContext);
-      });
-    }
+      }
+    };
+
+    walk(normalized, collectFunctions);
   }
-  
-  // Finalize the flow context
+
+  // 5. Walk nodes to build main flowchart
+  if (normalized) {
+    const target = mainFunction?.body || normalized;
+    context.handle = (node) => {
+      if (node && node.type) {
+        mapNodeJava(node, context);
+      }
+    };
+    walk(target, context);
+    delete context.handle;
+  }
+
+  // 6. Finalize main context
   finalizeFlowContext(context);
+
+  // 7. Build subgraphs for user-defined functions (only when a main function exists)
+  const subgraphIds = {}; // Map function names to their subgraph IDs
   
-  // 5. Emit final Mermaid flowchart
+  if (mainFunction && userFunctions.length > 0) {
+    userFunctions.forEach(fnNode => {
+      if (!fnNode?.body) return;
+
+      const fnContext = context.fork();
+
+      // Process function body directly without creating start/end nodes
+      fnContext.handle = (node) => {
+        if (node && node.type) {
+          mapNodeJava(node, fnContext);
+        }
+      };
+      walk(fnNode.body, fnContext);
+      delete fnContext.handle;
+
+      // Finalize function-specific context but don't add end node for subgraphs
+      finalizeFlowContext(fnContext, false);
+
+      const subgraphId = context.nextSubgraphId();
+      // Extract function name properly
+      const functionName = fnNode.name || "anonymous";
+      const subgraphLabel = `${subgraphId}["function ${fnNode.name || "anonymous"}"]`;
+      const subgraphLines = [
+        ...fnContext.nodes,
+        ...fnContext.edges
+      ];
+
+      context.addSubgraph(subgraphLabel, subgraphLines);
+
+      // Store subgraph ID for function calls to reference
+      subgraphIds[functionName] = subgraphId;
+    });
+  }
+
+  // Store subgraph IDs in main context for function call connections
+  context.subgraphIds = subgraphIds;
+
+  // 8. Emit final Mermaid flowchart
   return context.emit();
 }
