@@ -4,8 +4,8 @@
   "private": true,
   "main": "dist/main.js",
   "scripts": {
-    "start": "tsc && electron .",
-    "dev": "tsc && electron ."
+    "start": "tsc && electron --no-sandbox .",
+    "dev": "tsc && electron --no-sandbox ."
   },
   "dependencies": {
     "electron": "^28.0.0"
@@ -14,4 +14,4 @@
     "@types/node": "^20.0.0",
     "typescript": "^5.0.0"
   }
-} 
+}

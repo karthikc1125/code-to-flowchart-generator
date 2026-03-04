@@ -73,7 +73,7 @@ export const javaConfig = {
     }
     return root.children || [];
   },
-  
+
   // Function to identify user-defined functions
   isFunctionDefinition(node) {
     if (!node) return false;
@@ -105,9 +105,9 @@ export const javaConfig = {
 
   isAssignment(node) {
     if (!node) return false;
-    return node.type === 'assignment_expression' || 
-           node.type === 'variable_declarator' || 
-           node.type === 'local_variable_declaration';
+    return node.type === 'assignment_expression' ||
+      node.type === 'variable_declarator' ||
+      node.type === 'local_variable_declaration';
   },
 
   extractVariableInfo(node) {
@@ -169,7 +169,7 @@ export const javaConfig = {
   extractInputInfo(node) {
     let callExpr = null;
     let varDeclarator = null;
-    
+
     if (node.type === 'method_invocation') {
       callExpr = node;
     } else if (node.type === 'expression_statement') {
@@ -192,7 +192,7 @@ export const javaConfig = {
         return this.extractInputInfo(varDeclarator); // Recursively extract from variable_declarator
       }
     }
-    
+
     const prompt = callExpr ? extractCallLabel(callExpr) : '';
     return { prompt };
   },
@@ -229,7 +229,7 @@ export const javaConfig = {
 
   extractConditionInfo(node) {
     if (!node || !node.children) return { text: 'condition' };
-    
+
     // Handle switch expressions
     if (node.type === 'switch_expression') {
       // For switch expressions, the condition is in the parenthesized_expression
@@ -249,13 +249,13 @@ export const javaConfig = {
       }
       return { text: 'switch condition' };
     }
-    
+
     // Handle switch statements
     if (node.type === 'switch_statement') {
       const condNode = node.children.find(c => c && c.named);
       return { text: `switch ${textOf(condNode) || 'condition'}` };
     }
-    
+
     // Handle if statements - get the condition from parenthesized_expression
     if (node.type === 'if_statement') {
       const parenExpr = node.children.find(c => c && c.type === 'parenthesized_expression');
@@ -273,7 +273,7 @@ export const javaConfig = {
         return { text: text };
       }
     }
-    
+
     const condNode = node.children.find(c => c && c.named);
     return { text: textOf(condNode) || 'condition' };
   },
@@ -282,24 +282,16 @@ export const javaConfig = {
     if (!node || !node.children) return { calls: [] };
     // Handle switch statements differently
     if (node.type === 'switch_statement' || node.type === 'switch_expression') {
-      // For switch statements, we'll process each case as a separate branch
+      // For switch statements, we want to return the case statements 
+      // which will be processed by the switch.mjs handler
       const bodyBlock = node.children.find(c => c && (c.type === 'switch_block'));
       if (bodyBlock) {
-        // Find all switch block statement groups within the switch
-        const statementGroups = findAll(bodyBlock, 'switch_block_statement_group');
-        
-        // Collect all calls from all cases
-        const allCalls = [];
-        for (const group of statementGroups) {
-          const calls = findAll(group, 'method_invocation');
-          allCalls.push(...calls);
-        }
-        
-        return { calls: allCalls };
+        // Return the switch block statement groups and rules which contain the cases
+        return { calls: bodyBlock.children.filter(c => c && (c.type === 'switch_block_statement_group' || c.type === 'switch_rule')) || [] };
       }
       return { calls: [] };
     }
-    
+
     // Handle regular if statements - look for the then block
     const thenBlock = node.children.find(c => c && (c.type === 'block' || c.type === 'expression_statement'));
     if (thenBlock) {
@@ -321,7 +313,7 @@ export const javaConfig = {
     if (node.type === 'switch_statement' || node.type === 'switch_expression') {
       return { calls: [] };
     }
-    
+
     const elseBlock = node.children.find(c => c && c.type === 'else_clause');
     if (elseBlock && elseBlock.children) {
       // Find the block or statement within the else clause
@@ -348,7 +340,7 @@ export const javaConfig = {
   extractLoopInfo(node) {
     if (!node || !node.children) return { type: 'loop', condition: 'condition', calls: [] };
     const loopType = node.type.replace('_statement', '');
-    
+
     // For for loops, extract the full condition
     let condition = 'condition';
     if (node.type === 'for_statement') {
@@ -356,16 +348,16 @@ export const javaConfig = {
       const initDecl = node.children.find(c => c && (c.type === 'local_variable_declaration' || c.type === 'assignment_expression'));
       const condExpr = node.children.find(c => c && c.type === 'binary_expression');
       const updateExpr = node.children.find(c => c && (c.type === 'update_expression' || c.type === 'assignment_expression')); // Java can have assignment in update
-      
+
       const initText = initDecl ? textOf(initDecl) : '';
       const condText = condExpr ? textOf(condExpr) : '';
       const updateText = updateExpr ? textOf(updateExpr) : '';
-      
+
       // Format the condition properly to avoid double semicolons
       const initPart = initText ? initText.replace(/;$/, '') : '';
       const condPart = condText || '';
       const updatePart = updateText ? updateText.replace(/^;\s*/, '') : '';
-      
+
       const parts = [initPart, condPart, updatePart].filter(Boolean);
       condition = parts.join('; ');
     } else if (node.type === 'do_statement') {
@@ -380,7 +372,7 @@ export const javaConfig = {
       const condNode = node.children.find(c => c && c.named);
       condition = textOf(condNode) || 'condition';
     }
-    
+
     const bodyBlock = node.children.find(c => c && (c.type === 'block' || c.type === 'expression_statement'));
     // For Java, we need to look for both method_invocation and expression_statement nodes
     // that contain update_expressions (for increment/decrement)
@@ -388,7 +380,7 @@ export const javaConfig = {
     if (bodyBlock) {
       // Get method invocations
       calls = findAll(bodyBlock, 'method_invocation');
-      
+
       // Also get expression statements that contain update expressions
       const exprStatements = findAll(bodyBlock, 'expression_statement');
       for (const stmt of exprStatements) {
@@ -404,26 +396,26 @@ export const javaConfig = {
     }
     return { type: loopType, condition, calls };
   },
-  
+
   // New functions for enhanced language features
-  
+
   isReturnStatement(node) {
     if (!node) return false;
     return node.type === 'return_statement';
   },
-  
+
   extractReturnInfo(node) {
     if (!node || !node.children) return { value: '' };
     // Find the expression being returned
     const returnExpr = node.children.find(c => c && c.named && c.type !== 'return');
     return { value: returnExpr ? textOf(returnExpr) : '' };
   },
-  
+
   isBreakStatement(node) {
     if (!node) return false;
     return node.type === 'break_statement';
   },
-  
+
   isContinueStatement(node) {
     if (!node) return false;
     return node.type === 'continue_statement';

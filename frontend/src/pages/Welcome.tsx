@@ -38,7 +38,7 @@ const Welcome: React.FC = () => {
               <FiCode />
               Multi-language detection
             </h3>
-            <p style={{ margin: 0, opacity: 0.8 }}>JavaScript, TypeScript, Python, C/C++, Java, Pascal, Fortran.</p>
+            <p style={{ margin: 0, opacity: 0.8 }}>JavaScript, TypeScript, Python, C/C++, Java.</p>
           </div>
           <div style={{ padding: 16, borderRadius: 12, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
             <h3 style={{ margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: 8 }}>

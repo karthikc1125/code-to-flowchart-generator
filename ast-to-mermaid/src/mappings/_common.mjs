@@ -2,7 +2,7 @@
 
 export function createFlowBuilder() {
   let counter = 0;
-  const lines = ["flowchart TD"]; 
+  const lines = ["flowchart TD"];
   const ids = new Map();
   const pendingConnections = []; // Store connections that need to be made to the end node
   const subgraphs = new Map(); // Store subgraphs
@@ -11,6 +11,14 @@ export function createFlowBuilder() {
   function nodeId(key) {
     if (!ids.has(key)) ids.set(key, `N${++counter}`);
     return ids.get(key);
+  }
+
+  const virtualPoints = new Map();
+
+  function createVirtualPoint(idList, labelList = []) {
+    const vId = `VP_${++counter}`;
+    virtualPoints.set(vId, { ids: idList, labels: labelList });
+    return vId;
   }
 
   function addStart(label = 'start') {
@@ -69,7 +77,7 @@ export function createFlowBuilder() {
   }
 
   // New shape functions for different statement types
-  
+
   function addIfStatement(key, text) {
     const id = nodeId(key);
     const line = `${id}{${escapeConditionalText(text)}}`;
@@ -160,10 +168,10 @@ export function createFlowBuilder() {
     return id;
   }
 
-  // Add a join point for control flow merging
-  function addJoinPoint(key, text = 'join') {
+  function addJoinPoint(key, text = '') {
     const id = nodeId(key);
-    const line = `${id}[${escapeText(text)}]`;
+    // Use a small circle for join points by default
+    const line = text ? `${id}[${escapeText(text)}]` : `${id}((" "))`;
     if (currentSubgraph) {
       currentSubgraph.content.push(line);
     } else {
@@ -172,8 +180,22 @@ export function createFlowBuilder() {
     return id;
   }
 
+  // Add a truly hidden point for reference-only merges
+  function addHiddenPoint(key) {
+    const id = nodeId(key);
+    const line = `${id}[ ]`; // Node with space
+    if (currentSubgraph) {
+      currentSubgraph.content.push(line);
+    } else {
+      lines.push(line);
+    }
+    // Appending style to main lines to make it invisible
+    lines.push(`    style ${id} fill:none,stroke:none,color:none,width:0,height:0`);
+    return id;
+  }
+
   // Subgraph functions
-  
+
   function beginSubgraph(key, title) {
     const id = nodeId(key);
     const subgraph = {
@@ -197,6 +219,17 @@ export function createFlowBuilder() {
   }
 
   function link(from, to, label) {
+    // If 'from' is a virtual point, expand it into multiple direct links
+    if (typeof from === 'string' && from.startsWith('VP_') && virtualPoints.has(from)) {
+      const vPoint = virtualPoints.get(from);
+      vPoint.ids.forEach((id, index) => {
+        // Use the point's label if it has one, otherwise use the provided label
+        const edgeLabel = (vPoint.labels && vPoint.labels[index]) || label;
+        link(id, to, edgeLabel);
+      });
+      return;
+    }
+
     const line = label ? `${from} --${escapeEdge(label)}--> ${to}` : `${from} --> ${to}`;
     if (currentSubgraph) {
       currentSubgraph.content.push(line);
@@ -229,12 +262,12 @@ export function createFlowBuilder() {
     return lines.join('\n');
   }
 
-  return { 
-    addStart, 
-    addEnd, 
-    addAction, 
-    addInputOutput, 
-    addDecision, 
+  return {
+    addStart,
+    addEnd,
+    addAction,
+    addInputOutput,
+    addDecision,
     addIfStatement,
     addElseIfStatement,
     addSwitchStatement,
@@ -243,13 +276,14 @@ export function createFlowBuilder() {
     addContinueStatement,
     addBreakStatement,
     addReturnStatement,
-    addJoinPoint,
+    addHiddenPoint,
+    createVirtualPoint,
     beginSubgraph,
     endSubgraph,
-    link, 
+    link,
     linkToEnd,
     finalize,
-    toString 
+    toString
   };
 }
 
@@ -262,7 +296,7 @@ function escapeText(text) {
     .replace(/"/g, '&quot;')   // Replace double quotes with HTML entity to avoid using " inside strings
     .replace(/\n/g, ' ')       // Replace newlines with spaces
     .trim();
-  
+
   // Enclose all text with double quotes
   return `"${escapedText}"`;
 }

@@ -115,7 +115,7 @@ export const cppConfig = {
       // Check for stream input like cin >> number
       const text = textOf(node);
       if (/(^|\W)(std::)?cin\s*>>/i.test(text)) return true;
-      
+
       const callExpr = node.children.find(c => c && c.type === 'call_expression');
       if (callExpr && callExpr.children) {
         const callee = textOf(callExpr.children.find(c => c && c.named));
@@ -135,7 +135,7 @@ export const cppConfig = {
 
   extractInputInfo(node) {
     let callExpr = null;
-    
+
     if (node.type === 'call_expression') {
       callExpr = node;
     } else if (node.type === 'expression_statement') {
@@ -151,7 +151,7 @@ export const cppConfig = {
     } else if (node.type === 'init_declarator') {
       callExpr = node.children.find(c => c && c.type === 'call_expression');
     }
-    
+
     const prompt = callExpr ? extractCallLabel(callExpr) : '';
     return { prompt };
   },
@@ -227,7 +227,7 @@ export const cppConfig = {
 
   extractConditionInfo(node) {
     if (!node || !node.children) return { text: 'condition' };
-    
+
     // Handle switch statements differently
     if (node.type === 'switch_statement') {
       // For switch statements, the condition is in the condition_clause
@@ -247,7 +247,7 @@ export const cppConfig = {
       }
       return { text: 'switch condition' };
     }
-    
+
     const condNode = node.children.find(c => c && c.named);
     return { text: textOf(condNode) || 'condition' };
   },
@@ -256,47 +256,15 @@ export const cppConfig = {
     if (!node || !node.children) return { calls: [] };
     // Handle switch statements differently
     if (node.type === 'switch_statement') {
-      // For switch statements, we'll process each case as a separate branch
+      // For switch statements, we want to return the case statements 
+      // which will be processed by the switch.mjs handler
       const compoundStatement = node.children.find(c => c && c.type === 'compound_statement');
       if (compoundStatement) {
-        // Find all case statements within the switch
-        const caseStatements = findAll(compoundStatement, 'case_statement');
-        
-        // Collect all calls from all cases, avoiding duplicates
-        const allCalls = [];
-        const processedStatements = new Set();
-        
-        for (const caseStmt of caseStatements) {
-          // Skip if already processed
-          if (processedStatements.has(caseStmt)) continue;
-          processedStatements.add(caseStmt);
-          
-          // Look for call expressions in the case statement
-          const calls = findAll(caseStmt, 'call_expression');
-          allCalls.push(...calls);
-          
-          // Also look for expression statements (like cout statements)
-          const exprStmts = findAll(caseStmt, 'expression_statement');
-          for (const stmt of exprStmts) {
-            if (stmt && !processedStatements.has(stmt)) {
-              processedStatements.add(stmt);
-              // Look for binary expressions in the statement that might be cout statements
-              const binaryExprs = findAll(stmt, 'binary_expression');
-              for (const expr of binaryExprs) {
-                if (expr && /cout\s*<</.test(textOf(expr))) {
-                  allCalls.push(stmt);
-                  break; // Only add the statement once
-                }
-              }
-            }
-          }
-        }
-        
-        return { calls: allCalls };
+        return { calls: compoundStatement.children.filter(c => c && c.type !== '{' && c.type !== '}') || [] };
       }
       return { calls: [] };
     }
-    
+
     // Handle regular if statements
     const thenBlock = node.children.find(c => c && (c.type === 'compound_statement'));
     const calls = thenBlock ? findAll(thenBlock, 'call_expression') : [];
@@ -328,7 +296,7 @@ export const cppConfig = {
     if (node.type === 'switch_statement') {
       return { calls: [] };
     }
-    
+
     const elseBlock = node.children.find(c => c && c.type === 'else_clause');
     // The else block contains a compound_statement
     const compoundStatement = elseBlock ? elseBlock.children.find(c => c && c.type === 'compound_statement') : null;
@@ -363,7 +331,7 @@ export const cppConfig = {
   extractLoopInfo(node) {
     if (!node || !node.children) return { type: 'loop', condition: 'condition', calls: [] };
     const loopType = node.type.replace('_statement', '');
-    
+
     // For for loops, extract the full condition
     let condition = 'condition';
     if (node.type === 'for_statement') {
@@ -371,16 +339,16 @@ export const cppConfig = {
       const initDecl = node.children.find(c => c && (c.type === 'declaration' || c.type === 'init_declarator' || c.type === 'assignment_expression'));
       const condExpr = node.children.find(c => c && (c.type === 'binary_expression' || c.type === 'condition_clause'));
       const updateExpr = node.children.find(c => c && (c.type === 'update_expression' || c.type === 'assignment_expression'));
-      
+
       const initText = initDecl ? textOf(initDecl) : '';
       const condText = condExpr ? textOf(condExpr) : '';
       const updateText = updateExpr ? textOf(updateExpr) : '';
-      
+
       // Format the condition properly to avoid double semicolons
       const initPart = initText ? initText.replace(/;$/, '') : '';
       const condPart = condText || '';
       const updatePart = updateText ? updateText.replace(/^;\s*/, '') : '';
-      
+
       const parts = [initPart, condPart, updatePart].filter(Boolean);
       condition = parts.join('; ');
     } else if (node.type === 'do_statement') {
@@ -395,7 +363,7 @@ export const cppConfig = {
       const condNode = node.children.find(c => c && c.named);
       condition = textOf(condNode) || 'condition';
     }
-    
+
     const bodyBlock = node.children.find(c => c && (c.type === 'compound_statement'));
     // For C++, we need to look for both call_expression and expression_statement nodes
     // that contain binary_expressions (for cout statements) or update_expressions (for increment/decrement)
@@ -403,7 +371,7 @@ export const cppConfig = {
     if (bodyBlock) {
       // Get call expressions
       calls = findAll(bodyBlock, 'call_expression');
-      
+
       // Also get expression statements that contain cout operations or update expressions
       const exprStatements = findAll(bodyBlock, 'expression_statement');
       for (const stmt of exprStatements) {
@@ -418,7 +386,7 @@ export const cppConfig = {
               break; // Only add the statement once
             }
           }
-          
+
           // If it's not a cout statement, check if it contains an update expression
           if (!isCoutStatement) {
             const updateExprs = findAll(stmt, 'update_expression');
@@ -432,14 +400,14 @@ export const cppConfig = {
     }
     return { type: loopType, condition, calls };
   },
-  
+
   // New functions for enhanced language features
-  
+
   isReturnStatement(node) {
     if (!node) return false;
     return node.type === 'return_statement';
   },
-  
+
   extractReturnInfo(node) {
     if (!node || !node.children) return { value: '' };
     // Find the expression being returned
@@ -449,12 +417,12 @@ export const cppConfig = {
     const cleanValue = value.replace(/[\[\]{}]/g, '').trim();
     return { value: cleanValue };
   },
-  
+
   isBreakStatement(node) {
     if (!node) return false;
     return node.type === 'break_statement';
   },
-  
+
   isContinueStatement(node) {
     if (!node) return false;
     return node.type === 'continue_statement';

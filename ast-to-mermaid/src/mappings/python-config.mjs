@@ -10,8 +10,8 @@ function findAll(node, type) {
   return results;
 }
 
-function textOf(node) { 
-  return node?.text || ''; 
+function textOf(node) {
+  return node?.text || '';
 }
 
 function getVariableName(node) {
@@ -36,7 +36,8 @@ function extractCallLabel(callNode) {
 
 export const pythonConfig = {
   rootNodeTypes: ['module'],
-  
+  disableFallthrough: true,
+
   // Function to identify user-defined functions
   isFunctionDefinition(node) {
     if (!node) return false;
@@ -69,7 +70,7 @@ export const pythonConfig = {
     }
     return null;
   },
-  
+
   isAssignment(node) {
     if (!node) return false;
     // Direct check
@@ -80,7 +81,7 @@ export const pythonConfig = {
     }
     return false;
   },
-  
+
   extractVariableInfo(node) {
     // Handle expression statements that contain assignments
     if (node.type === 'expression_statement' && node.children) {
@@ -89,17 +90,17 @@ export const pythonConfig = {
         return this.extractVariableInfo(assignmentNode);
       }
     }
-    
+
     const name = getVariableName(node.children.find(c => c && c.type === 'identifier'));
     const value = node.children.find(c => c && (c.type === 'string' || c.type === 'integer' || c.type === 'float'))?.text || 'value';
     return { name, value };
   },
-  
+
   isInputCall(node) {
     if (!node) return false;
-    
+
     // console.log('isInputCall called with node type:', node.type);
-    
+
     if (node.type === 'call') {
       // Get the first child which should be the function name
       const calleeNode = node.children && node.children.length > 0 ? node.children[0] : null;
@@ -130,7 +131,7 @@ export const pythonConfig = {
       }
       return false;
     }
-    
+
     if (node.type === 'expression_statement') {
       // console.log('  Expression statement, checking children');
       // For expression statements, check all children recursively
@@ -144,7 +145,7 @@ export const pythonConfig = {
       }
       return false;
     }
-    
+
     // Also check for assignments that contain input calls
     if (node.type === 'assignment') {
       // console.log('  Assignment node, checking children');
@@ -159,14 +160,14 @@ export const pythonConfig = {
       }
       return false;
     }
-    
+
     // console.log('  Not handling this node type');
     return false;
   },
-  
+
   extractInputInfo(node) {
     let callExpr = null;
-    
+
     // Helper function to find input call recursively
     const findInputCall = (n) => {
       if (!n) return null;
@@ -187,7 +188,7 @@ export const pythonConfig = {
       }
       return null;
     };
-    
+
     if (node.type === 'call') {
       callExpr = findInputCall(node);
     } else if (node.type === 'expression_statement') {
@@ -223,12 +224,12 @@ export const pythonConfig = {
         }
       }
     }
-    
+
     const prompt = callExpr ? extractCallLabel(callExpr) : '';
     // console.log('Final prompt for node type', node.type, ':', prompt);
     return { prompt };
   },
-  
+
   isOutputCall(node) {
     if (node.type === 'call') {
       // For Python calls, the first child is typically the function identifier
@@ -247,7 +248,7 @@ export const pythonConfig = {
     }
     return false;
   },
-  
+
   extractOutputInfo(node) {
     const callExpr = node.type === 'call' ? node : node.children.find(c => c.type === 'call');
     // For Python calls, the first child is typically the function identifier
@@ -256,11 +257,11 @@ export const pythonConfig = {
     const arg = extractCallLabel(callExpr);
     return { function: functionName, arg };
   },
-  
+
   isConditional(node) {
-    return ['if_statement', 'conditional_expression', 'match_statement'].includes(node.type);
+    return ['if_statement', 'elif_clause', 'conditional_expression', 'match_statement'].includes(node.type);
   },
-  
+
   extractConditionInfo(node) {
     // Handle match statements (Python's switch)
     if (node.type === 'match_statement') {
@@ -268,73 +269,59 @@ export const pythonConfig = {
       const conditionNode = node.children && node.children.length > 1 ? node.children[1] : null;
       return { text: `match ${conditionNode ? textOf(conditionNode) : 'condition'}` };
     }
-    
+
     const condNode = (node.children || []).find(c => c.named);
     return { text: textOf(condNode) || 'condition' };
   },
-  
+
   extractThenBranch(node) {
     // Handle match statements (Python's switch)
     if (node.type === 'match_statement') {
-      // For match statements, we'll process each case as a separate branch
+      // For match statements, we want to return the case statements 
+      // which will be processed by the switch.mjs handler
       const bodyBlock = node.children.find(c => c && (c.type === 'block'));
       if (bodyBlock) {
-        // Find all case clauses within the match
-        const caseClauses = bodyBlock.children.filter(c => c && c.type === 'case_clause');
-        
-        // Collect all calls from all cases
-        const allCalls = [];
-        for (const caseClause of caseClauses) {
-          // Each case clause has a block with the actual code
-          const caseBlock = caseClause.children.find(c => c && c.type === 'block');
-          if (caseBlock) {
-            const calls = findAll(caseBlock, 'call');
-            allCalls.push(...calls);
-          }
-        }
-        
-        return { calls: allCalls };
+        // Return the case clauses which contain the cases
+        return { calls: bodyBlock.children.filter(c => c && c.type === 'case_clause') || [] };
       }
       return { calls: [] };
     }
-    
-    // Handle regular if statements
+
+    // Handle regular if statements - return all statements from the block
     const thenBlock = node.children.find(c => c.type === 'block' || c.type === 'expression_statement');
-    const calls = thenBlock ? findAll(thenBlock, 'call') : [];
-    return { calls };
+    if (thenBlock && thenBlock.children) {
+      return { calls: thenBlock.children.filter(c => c && c.named) };
+    }
+    return { calls: [] };
   },
-  
+
   extractElseBranch(node) {
-    // Match statements don't have else branches in the same way
-    if (node.type === 'match_statement') {
-      return { calls: [] };
-    }
-    
-    // For Python if/elif/else statements, we need to handle elif clauses specially
-    if (node.type === 'if_statement') {
-      // Look for else_clause first
-      const elseBlock = node.children.find(c => c.type === 'else_clause');
-      if (elseBlock) {
-        const calls = findAll(elseBlock, 'call');
-        return { calls };
+    if (node.type === 'match_statement') return { calls: [] };
+
+    // Find the first elif_clause or else_clause
+    // Python if_statement children include multiple elif_clause then one else_clause
+    // But we handle them one at a time recursively
+    const elif = node.children?.find(c => c.type === 'elif_clause');
+    if (elif) return { calls: [elif] };
+
+    const elseClause = node.children?.find(c => c.type === 'else_clause');
+    if (elseClause) {
+      const block = elseClause.children?.find(c => c.type === 'block');
+      if (block && block.children) {
+        return { calls: block.children.filter(c => c && c.named) };
       }
-      
-      // If no else clause, return empty calls
-      return { calls: [] };
     }
-    
-    const elseBlock = node.children.find(c => c.type === 'else_clause');
-    const calls = elseBlock ? findAll(elseBlock, 'call') : [];
-    return { calls };
+
+    return { calls: [] };
   },
 
   isLoop(node) {
     return ['for_statement', 'while_statement', 'do_statement'].includes(node.type);
   },
-  
+
   extractLoopInfo(node) {
     const loopType = node.type.replace('_statement', '');
-    
+
     // For for loops, extract the full condition
     let condition = 'condition';
     if (node.type === 'for_statement') {
@@ -342,10 +329,10 @@ export const pythonConfig = {
       // Find the identifier, 'in' keyword, and the call
       const identifierNode = node.children.find(c => c && c.type === 'identifier');
       const callNode = node.children.find(c => c && c.type === 'call');
-      
+
       const identifierText = identifierNode ? textOf(identifierNode) : '';
       const callText = callNode ? textOf(callNode) : '';
-      
+
       if (identifierText && callText) {
         condition = `${identifierText} in ${callText}`;
       } else {
@@ -363,7 +350,7 @@ export const pythonConfig = {
       const condNode = (node.children || []).find(c => c.named);
       condition = textOf(condNode) || 'condition';
     }
-    
+
     const bodyBlock = node.children.find(c => c.type === 'block' || c.type === 'expression_statement');
     // For Python, we need to look for both call and expression_statement nodes
     // that contain augmented_assignment (for +=, -=, etc.)
@@ -371,7 +358,7 @@ export const pythonConfig = {
     if (bodyBlock) {
       // Get call expressions
       calls = findAll(bodyBlock, 'call');
-      
+
       // Also get expression statements that contain augmented assignments
       const exprStatements = findAll(bodyBlock, 'expression_statement');
       for (const stmt of exprStatements) {
@@ -387,24 +374,24 @@ export const pythonConfig = {
     }
     return { type: loopType, condition, calls };
   },
-  
+
   // New functions for enhanced language features
-  
+
   isReturnStatement(node) {
     return node.type === 'return_statement';
   },
-  
+
   extractReturnInfo(node) {
     if (!node || !node.children) return { value: '' };
     // Find the expression being returned
     const returnExpr = node.children.find(c => c && c.named && c.type !== 'return');
     return { value: returnExpr ? textOf(returnExpr) : '' };
   },
-  
+
   isBreakStatement(node) {
     return node.type === 'break_statement';
   },
-  
+
   isContinueStatement(node) {
     return node.type === 'continue_statement';
   }

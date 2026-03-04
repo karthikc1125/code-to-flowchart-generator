@@ -30,13 +30,11 @@
   ],
   "supported_languages": [
     "javascript",
-    "typescript", 
+    "typescript",
     "python",
     "java",
     "c",
-    "cpp",
-    "pascal",
-    "fortran"
+    "cpp"
   ],
   "few_shot_examples": [
     {

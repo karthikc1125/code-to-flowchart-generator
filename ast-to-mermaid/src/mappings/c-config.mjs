@@ -88,9 +88,9 @@ export const cConfig = {
   isAssignment(node) {
     if (!node) return false;
     // Detect both assignment expressions and declaration expressions with initializers
-    return node.type === 'assignment_expression' || 
-           (node.type === 'declaration' && node.children && 
-            node.children.some(child => child && child.type === 'init_declarator'));
+    return node.type === 'assignment_expression' ||
+      (node.type === 'declaration' && node.children &&
+        node.children.some(child => child && child.type === 'init_declarator'));
   },
 
   extractVariableInfo(node) {
@@ -199,7 +199,7 @@ export const cConfig = {
 
   extractConditionInfo(node) {
     if (!node || !node.children) return { text: 'condition' };
-    
+
     // Handle switch statements differently
     if (node.type === 'switch_statement') {
       // For switch statements, the condition is in the parenthesized_expression
@@ -219,7 +219,7 @@ export const cConfig = {
       }
       return { text: 'switch condition' };
     }
-    
+
     const condNode = node.children.find(c => c && c.named);
     return { text: textOf(condNode) || 'condition' };
   },
@@ -228,30 +228,15 @@ export const cConfig = {
     if (!node || !node.children) return { calls: [] };
     // Handle switch statements differently
     if (node.type === 'switch_statement') {
-      // For switch statements, we'll process each case as a separate branch
+      // For switch statements, we want to return the case statements 
+      // which will be processed by the switch.mjs handler
       const compoundStatement = node.children.find(c => c && c.type === 'compound_statement');
       if (compoundStatement) {
-        // Find all case statements within the switch
-        const caseStatements = findAll(compoundStatement, 'case_statement');
-        
-        // Collect all calls from all cases, avoiding duplicates
-        const allCalls = [];
-        const processedStatements = new Set();
-        
-        for (const caseStmt of caseStatements) {
-          // Skip if already processed
-          if (processedStatements.has(caseStmt)) continue;
-          processedStatements.add(caseStmt);
-          
-          const calls = findAll(caseStmt, 'call_expression');
-          allCalls.push(...calls);
-        }
-        
-        return { calls: allCalls };
+        return { calls: compoundStatement.children.filter(c => c && c.type !== '{' && c.type !== '}') || [] };
       }
       return { calls: [] };
     }
-    
+
     // Handle regular if statements - return ALL statements from the body, not just calls
     const thenBlock = node.children.find(c => c && (c.type === 'compound_statement'));
     if (thenBlock && thenBlock.children) {
@@ -267,14 +252,14 @@ export const cConfig = {
     if (node.type === 'switch_statement') {
       return { calls: [] };
     }
-    
+
     // Handle else clause - return ALL statements from the body, not just calls
     const elseBlock = node.children.find(c => c && c.type === 'else_clause');
     if (elseBlock && elseBlock.children) {
       // Find the compound statement or if_statement within the else clause
       const compoundStmt = elseBlock.children.find(c => c && c.type === 'compound_statement');
       const ifStmt = elseBlock.children.find(c => c && c.type === 'if_statement');
-      
+
       if (compoundStmt && compoundStmt.children) {
         // Return all child statements from the block for recursive processing
         return { calls: compoundStmt.children.filter(c => c && c.type !== '{' && c.type !== '}') };
@@ -294,7 +279,7 @@ export const cConfig = {
   extractLoopInfo(node) {
     if (!node || !node.children) return { type: 'loop', condition: 'condition', calls: [] };
     const loopType = node.type.replace('_statement', '');
-    
+
     // For for loops, extract the full condition
     let condition = 'condition';
     if (node.type === 'for_statement') {
@@ -302,16 +287,16 @@ export const cConfig = {
       const initDecl = node.children.find(c => c && (c.type === 'declaration' || c.type === 'init_declarator' || c.type === 'assignment_expression'));
       const condExpr = node.children.find(c => c && c.type === 'binary_expression');
       const updateExpr = node.children.find(c => c && (c.type === 'update_expression' || c.type === 'assignment_expression'));
-      
+
       const initText = initDecl ? textOf(initDecl) : '';
       const condText = condExpr ? textOf(condExpr) : '';
       const updateText = updateExpr ? textOf(updateExpr) : '';
-      
+
       // Format the condition properly to avoid double semicolons
       const initPart = initText ? initText.replace(/;$/, '') : '';
       const condPart = condText || '';
       const updatePart = updateText ? updateText.replace(/^;\s*/, '') : '';
-      
+
       const parts = [initPart, condPart, updatePart].filter(Boolean);
       condition = parts.join('; ');
     } else if (node.type === 'do_statement') {
@@ -326,7 +311,7 @@ export const cConfig = {
       const condNode = node.children.find(c => c && c.named);
       condition = textOf(condNode) || 'condition';
     }
-    
+
     const bodyBlock = node.children.find(c => c && (c.type === 'compound_statement'));
     // For C, we need to look for both call_expression and expression_statement nodes
     // that contain update_expressions (for increment/decrement)
@@ -334,7 +319,7 @@ export const cConfig = {
     if (bodyBlock) {
       // Get call expressions
       calls = findAll(bodyBlock, 'call_expression');
-      
+
       // Also get expression statements that contain update expressions
       const exprStatements = findAll(bodyBlock, 'expression_statement');
       for (const stmt of exprStatements) {
@@ -352,24 +337,24 @@ export const cConfig = {
   },
 
   // New functions for enhanced language features
-  
+
   isReturnStatement(node) {
     if (!node) return false;
     return node.type === 'return_statement';
   },
-  
+
   extractReturnInfo(node) {
     if (!node || !node.children) return { value: '' };
     // Find the expression being returned
     const returnExpr = node.children.find(c => c && c.named && c.type !== 'return');
     return { value: returnExpr ? textOf(returnExpr) : '' };
   },
-  
+
   isBreakStatement(node) {
     if (!node) return false;
     return node.type === 'break_statement';
   },
-  
+
   isContinueStatement(node) {
     if (!node) return false;
     return node.type === 'continue_statement';

@@ -6,7 +6,7 @@ import BackButton from '../components/BackButton';
 import { convertCodeToMermaid, detectLanguageLocal, detectLanguageAPI } from '../services/api';
 import { styled } from '@mui/material/styles';
 
-type LanguageType = 'select' | 'js' | 'ts' | 'python' | 'java' | 'c' | 'cpp' | 'pascal' | 'fortran';
+type LanguageType = 'select' | 'js' | 'ts' | 'python' | 'java' | 'c' | 'cpp';
 
 const CodeEntry: React.FC = () => {
     const [inputCode, setInputCode] = useState('');
@@ -32,22 +32,20 @@ const CodeEntry: React.FC = () => {
             python: 'python',
             java: 'java',
             c: 'c',
-            cpp: 'cpp',
-            pascal: 'pascal',
-            fortran: 'fortran'
+            cpp: 'cpp'
         };
         return map[selectedLanguage] || 'plaintext';
     };
 
     const addColorsToMermaid = (mermaidCode: string): string => {
         if (!mermaidCode || mermaidCode.startsWith('//')) return mermaidCode;
-        
+
         // Add style definitions and classDefs for different shapes
         const lines = mermaidCode.split('\n');
         const flowchartLine = lines.findIndex(line => line.trim().startsWith('flowchart') || line.trim().startsWith('graph'));
-        
+
         if (flowchartLine === -1) return mermaidCode;
-        
+
         // Define color styles for different node types
         const styleDefinitions = [
             '    %% Color definitions for different shapes',
@@ -57,64 +55,64 @@ const CodeEntry: React.FC = () => {
             '    classDef inputOutputClass fill:#e8f5e9,stroke:#388e3c,stroke-width:2px,color:#000',
             ''
         ];
-        
+
         // Insert style definitions after the flowchart declaration
         lines.splice(flowchartLine + 1, 0, ...styleDefinitions);
-        
+
         // Identify and classify nodes based on their shape
         const nodeClasses: { [key: string]: string } = {};
-        
+
         lines.forEach((line, index) => {
             const trimmed = line.trim();
-            
+
             // Start/End nodes (stadium shape [( )])
             const stadiumMatch = trimmed.match(/([A-Z0-9_]+)\[\(([^\)]+)\)\]/);
             if (stadiumMatch) {
                 nodeClasses[stadiumMatch[1]] = 'startEndClass';
             }
-            
+
             // Decision nodes (diamond { })
             const diamondMatch = trimmed.match(/([A-Z0-9_]+)\{([^\}]+)\}/);
             if (diamondMatch) {
                 nodeClasses[diamondMatch[1]] = 'decisionClass';
             }
-            
+
             // Process nodes (rectangle [ ])
             const rectMatch = trimmed.match(/([A-Z0-9_]+)\[([^\]]+)\]/);
             if (rectMatch && !stadiumMatch) {
                 nodeClasses[rectMatch[1]] = 'processClass';
             }
-            
+
             // Input/Output nodes (parallelogram [/ /] or [\ \\])
             const parallelMatch = trimmed.match(/([A-Z0-9_]+)\[\/([^\/]+)\/\]|([A-Z0-9_]+)\[\\\\([^\\]+)\\\\\]/);
             if (parallelMatch) {
                 nodeClasses[parallelMatch[1] || parallelMatch[3]] = 'inputOutputClass';
             }
         });
-        
+
         // Add class assignments at the end
         const classAssignments: string[] = [];
         Object.entries(nodeClasses).forEach(([nodeId, className]) => {
             classAssignments.push(`    class ${nodeId} ${className}`);
         });
-        
+
         if (classAssignments.length > 0) {
             lines.push('', '    %% Apply styles to nodes', ...classAssignments);
         }
-        
+
         return lines.join('\n');
     };
 
     const handleConvert = async () => {
         const code = inputCode.trim();
         if (!code) return;
-        
+
         // Check if a language is selected
         if (selectedLanguage === 'select') {
             setOutputCode('// Error: Please select a language before converting');
             return;
         }
-        
+
         try {
             // Detect the actual language of the code
             let detectedLanguage: string | null = detectLanguageLocal(code);
@@ -125,19 +123,13 @@ const CodeEntry: React.FC = () => {
                     console.warn('API language detection failed:', error);
                 }
             }
-            
+
             // Normalize detected language
             let normalizedDetected: LanguageType | 'no language detected' = detectedLanguage as LanguageType;
             if (detectedLanguage === 'javascript') {
                 normalizedDetected = 'js';
             } else if (detectedLanguage === 'typescript') {
                 normalizedDetected = 'ts';
-            } else if (detectedLanguage === 'pascal') {
-                normalizedDetected = 'pascal';
-            } else if (detectedLanguage === 'fortran') {
-                normalizedDetected = 'fortran';
-            } else if (detectedLanguage === 'python') {
-                normalizedDetected = 'python';
             } else if (detectedLanguage === 'java') {
                 normalizedDetected = 'java';
             } else if (detectedLanguage === 'c') {
@@ -147,23 +139,21 @@ const CodeEntry: React.FC = () => {
             } else if (detectedLanguage === 'no language detected') {
                 normalizedDetected = 'no language detected';
             }
-            
+
             // Check if selected language matches detected language
-            const languageMismatch = 
+            const languageMismatch =
                 (selectedLanguage === 'js' && normalizedDetected !== 'js') ||
                 (selectedLanguage === 'ts' && normalizedDetected !== 'ts') ||
                 (selectedLanguage === 'python' && normalizedDetected !== 'python') ||
                 (selectedLanguage === 'java' && normalizedDetected !== 'java') ||
                 (selectedLanguage === 'c' && normalizedDetected !== 'c') ||
-                (selectedLanguage === 'cpp' && normalizedDetected !== 'cpp') ||
-                (selectedLanguage === 'pascal' && normalizedDetected !== 'pascal') ||
-                (selectedLanguage === 'fortran' && normalizedDetected !== 'fortran');
-            
+                (selectedLanguage === 'cpp' && normalizedDetected !== 'cpp');
+
             if (languageMismatch && normalizedDetected && normalizedDetected !== 'no language detected') {
                 setOutputCode(`// Error: The selected language (${selectedLanguage}) does not match the detected language (${normalizedDetected}) of your code. Please select the correct language.`);
                 return;
             }
-            
+
             setOutputCode('// Converting to Mermaid...');
             // send selected language to backend for conversion
             const mermaid = await convertCodeToMermaid(code, selectedLanguage as any);
@@ -219,8 +209,6 @@ const CodeEntry: React.FC = () => {
                                         <MenuItem value="java">Java</MenuItem>
                                         <MenuItem value="c">C</MenuItem>
                                         <MenuItem value="cpp">C++</MenuItem>
-                                        <MenuItem value="pascal">Pascal</MenuItem>
-                                        <MenuItem value="fortran">Fortran</MenuItem>
                                     </Select>
                                 </FormControl>
                                 <Button
@@ -229,7 +217,7 @@ const CodeEntry: React.FC = () => {
                                     onClick={() => {
                                         const input = document.createElement('input');
                                         input.type = 'file';
-                                        input.accept = '.js,.ts,.jsx,.tsx,.py,.java,.cpp,.c,.cs,.php,.rb,.go,.rs,.kt,.swift,.pas,.f,.f90,.f95';
+                                        input.accept = '.js,.ts,.jsx,.tsx,.py,.java,.cpp,.c,.cs,.php,.rb,.go,.rs,.kt,.swift';
                                         input.onchange = (e) => {
                                             const file = (e.target as HTMLInputElement).files?.[0];
                                             if (file) {
@@ -341,7 +329,7 @@ const CodeEntry: React.FC = () => {
                         </Box>
                     </Box>
                 </Box>
-            
+
             </Paper>
         </Box>
     );
