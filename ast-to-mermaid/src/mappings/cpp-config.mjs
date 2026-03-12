@@ -266,28 +266,14 @@ export const cppConfig = {
     }
 
     // Handle regular if statements
-    const thenBlock = node.children.find(c => c && (c.type === 'compound_statement'));
-    const calls = thenBlock ? findAll(thenBlock, 'call_expression') : [];
-    // Also look for expression statements directly in if statements
-    const processedExprStmts = new Set();
-    if (!calls || calls.length === 0) {
-      const exprStatements = thenBlock ? findAll(thenBlock, 'expression_statement') : [];
-      // For each expression statement, look for binary expressions that might be cout statements
-      for (const stmt of exprStatements) {
-        if (stmt && !processedExprStmts.has(stmt)) {
-          processedExprStmts.add(stmt);
-          // Look for binary expressions in the statement
-          const binaryExprs = findAll(stmt, 'binary_expression');
-          for (const expr of binaryExprs) {
-            if (expr && /cout\s*<</.test(textOf(expr))) {
-              calls.push(stmt);
-              break; // Only add the statement once
-            }
-          }
-        }
+    const thenBlock = node.children.find(c => c && (c.type === 'compound_statement' || c.type === 'expression_statement' || c.type === 'return_statement' || c.type === 'break_statement' || c.type === 'continue_statement'));
+    if (thenBlock) {
+      if (thenBlock.type === 'compound_statement' && thenBlock.children) {
+        return { calls: thenBlock.children.filter(c => c && c.type !== '{' && c.type !== '}') };
       }
+      return { calls: [thenBlock] };
     }
-    return { calls };
+    return { calls: [] };
   },
 
   extractElseBranch(node) {
@@ -298,29 +284,16 @@ export const cppConfig = {
     }
 
     const elseBlock = node.children.find(c => c && c.type === 'else_clause');
-    // The else block contains a compound_statement
-    const compoundStatement = elseBlock ? elseBlock.children.find(c => c && c.type === 'compound_statement') : null;
-    const calls = compoundStatement ? findAll(compoundStatement, 'call_expression') : [];
-    // Also look for expression statements directly in else statements
-    const processedExprStmts = new Set();
-    if (!calls || calls.length === 0) {
-      const exprStatements = compoundStatement ? findAll(compoundStatement, 'expression_statement') : [];
-      // For each expression statement, look for binary expressions that might be cout statements
-      for (const stmt of exprStatements) {
-        if (stmt && !processedExprStmts.has(stmt)) {
-          processedExprStmts.add(stmt);
-          // Look for binary expressions in the statement
-          const binaryExprs = findAll(stmt, 'binary_expression');
-          for (const expr of binaryExprs) {
-            if (expr && /cout\s*<</.test(textOf(expr))) {
-              calls.push(stmt);
-              break; // Only add the statement once
-            }
-          }
+    if (elseBlock && elseBlock.children) {
+      const blockOrStmt = elseBlock.children.find(c => c && (c.type === 'compound_statement' || c.type === 'expression_statement' || c.type === 'if_statement' || c.type === 'return_statement' || c.type === 'break_statement' || c.type === 'continue_statement'));
+      if (blockOrStmt) {
+        if (blockOrStmt.type === 'compound_statement' && blockOrStmt.children) {
+          return { calls: blockOrStmt.children.filter(c => c && c.type !== '{' && c.type !== '}') };
         }
+        return { calls: [blockOrStmt] };
       }
     }
-    return { calls };
+    return { calls: [] };
   },
 
   isLoop(node) {

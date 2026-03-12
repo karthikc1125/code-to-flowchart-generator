@@ -1,5 +1,4 @@
-import { mapSmartIf } from './statements/conditional/smart-if.mjs';
-import { mapSwitch } from './statements/conditional/switch.mjs';
+import { mapSmartConditional } from './statements/conditional/smart-conditional.mjs';
 
 /**
  * Standardized Conditional Processor
@@ -16,57 +15,7 @@ export function processSingleConditional(node, flow, languageConfig, last, initi
   // Use the provided processor or fallback to a dummy if not provided (should be provided)
   const processSequenceLocal = processor || languageConfig._processor;
 
-  const mapper = {
-    getCondition: (n) => (languageConfig.extractConditionInfo(n))?.text || 'condition',
-    getThenBranch: (n) => (languageConfig.extractThenBranch(n))?.calls || [],
-    getElseBranch: (n) => (languageConfig.extractElseBranch(n))?.calls || []
-  };
-
-  const processSequence = (nodes, startId, label) => {
-    if (!nodes || nodes.length === 0) {
-      return { lastIds: [startId], exitLabels: [label] };
-    }
-
-    // Detect nested conditionals to keep the chain status
-    const isNextElseIf = nodes.length === 1 && languageConfig.isConditional(nodes[0]);
-
-    if (processSequenceLocal) {
-      const result = processSequenceLocal(nodes, flow, languageConfig, startId, label, isNextElseIf);
-      return {
-        lastIds: [result.last],
-        exitLabels: [""]
-      };
-    }
-
-    // Fallback if no processor
-    return { lastIds: [startId], exitLabels: [label] };
-  };
-
-  let result;
-  if (node.type === 'switch_statement' || node.type === 'match_statement' || node.type === 'switch_expression') {
-    result = mapSwitch(node, {
-      builder: flow,
-      prevId: last,
-      entryLabel: initialLabel,
-      mapper,
-      processSequence,
-      disableFallthrough: languageConfig.disableFallthrough
-    });
-  } else {
-    result = mapSmartIf(node, {
-      builder: flow,
-      prevId: last,
-      entryLabel: initialLabel,
-      mapper,
-      processSequence,
-      isElseIf // Pass the status to the smart mapper
-    });
-  }
-
-  return {
-    last: result.lastIds[0],
-    pendingConnections: []
-  };
+  return mapSmartConditional(node, flow, languageConfig, last, initialLabel, processSequenceLocal, isElseIf);
 }
 
 export function processConditionalChain(nodes, flow, languageConfig, last, pendingConnections, processor = null) {

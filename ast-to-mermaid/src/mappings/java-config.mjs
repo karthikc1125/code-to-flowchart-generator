@@ -293,7 +293,7 @@ export const javaConfig = {
     }
 
     // Handle regular if statements - look for the then block
-    const thenBlock = node.children.find(c => c && (c.type === 'block' || c.type === 'expression_statement'));
+    const thenBlock = node.children.find(c => c && (c.type === 'block' || c.type === 'expression_statement' || c.type === 'return_statement' || c.type === 'continue_statement' || c.type === 'break_statement'));
     if (thenBlock) {
       // For blocks, we need to get all statements inside
       if (thenBlock.type === 'block' && thenBlock.children) {
@@ -314,19 +314,14 @@ export const javaConfig = {
       return { calls: [] };
     }
 
-    const elseBlock = node.children.find(c => c && c.type === 'else_clause');
-    if (elseBlock && elseBlock.children) {
-      // Find the block or statement within the else clause
-      const blockOrStmt = elseBlock.children.find(c => c && (c.type === 'block' || c.type === 'expression_statement' || c.type === 'if_statement'));
-      if (blockOrStmt) {
-        // For blocks, we need to get all statements inside
-        if (blockOrStmt.type === 'block' && blockOrStmt.children) {
-          // Return all direct children of the block (the statements)
-          const statements = blockOrStmt.children.filter(c => c && c.type !== '{' && c.type !== '}');
-          return { calls: statements };
+    const elseIndex = node.children.findIndex(c => c.type === 'else');
+    if (elseIndex !== -1 && elseIndex + 1 < node.children.length) {
+      const alternative = node.children[elseIndex + 1];
+      if (alternative) {
+        if (alternative.type === 'block' && alternative.children) {
+          return { calls: alternative.children.filter(c => c && c.type !== '{' && c.type !== '}') };
         }
-        // For expression statements or if statements, return the statement itself
-        return { calls: [blockOrStmt] };
+        return { calls: [alternative] };
       }
     }
     return { calls: [] };
