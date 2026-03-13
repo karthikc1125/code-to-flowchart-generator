@@ -87,34 +87,35 @@ export const cConfig = {
 
   isAssignment(node) {
     if (!node) return false;
-    // Detect both assignment expressions and declaration expressions with initializers
-    return node.type === 'assignment_expression' ||
-      (node.type === 'declaration' && node.children &&
-        node.children.some(child => child && child.type === 'init_declarator'));
+    return node.type === 'assignment_expression' || node.type === 'init_declarator' || node.type === 'declaration';
   },
 
   extractVariableInfo(node) {
     if (!node || !node.children) return null;
-    if (node.type === 'assignment_expression') {
-      const name = getVariableName(node.children.find(c => c && c.type === 'identifier'));
-      const value = node.children.find(c => c && (c.type === 'string_literal' || c.type === 'number_literal' || c.type === 'integer_literal'))?.text || 'value';
+    let targetNode = node;
+    
+    // If it's a declaration, find the init_declarator inside it
+    if (node.type === 'declaration') {
+      targetNode = node.children.find(c => c && c.type === 'init_declarator');
+      if (!targetNode) return null;
+    }
+
+    if (targetNode.type === 'assignment_expression') {
+      const name = getVariableName(targetNode.children.find(c => c && c.type === 'identifier'));
+      const value = targetNode.children.find(c => c && (c.type === 'string_literal' || c.type === 'number_literal' || c.type === 'integer_literal'))?.text || 'value';
       return { name, value };
     }
-    // Handle declaration with initializer
-    if (node.type === 'declaration') {
-      // Extract the full declaration text to include type information
-      const typeNode = node.children.find(c => c && (c.type === 'primitive_type' || c.type === 'sized_type_specifier'));
-      const initDeclarator = node.children.find(c => c && c.type === 'init_declarator');
-      if (initDeclarator) {
-        const name = getVariableName(initDeclarator.children.find(c => c && c.type === 'identifier'));
-        // Extract the actual value instead of using default 'value'
-        const valueNode = initDeclarator.children.find(c => c && (c.type === 'integer_literal' || c.type === 'number_literal' || c.type === 'string_literal'));
-        const value = valueNode ? textOf(valueNode) : 'value';
-        // Include type information in the name
-        const typeName = typeNode ? textOf(typeNode) : '';
-        const fullName = typeName ? `${typeName} ${name}` : name;
-        return { name: fullName, value };
+    if (targetNode.type === 'init_declarator') {
+      let name = '';
+      const identifierNode = targetNode.children.find(c => c && c.type === 'identifier');
+      if (identifierNode) {
+        name = getVariableName(identifierNode);
+      } else {
+        const ptrExpr = targetNode.children.find(c => c && c.type === 'pointer_expression');
+        if (ptrExpr) name = getVariableName(ptrExpr.children.find(c => c && c.type === 'identifier'));
       }
+      const value = targetNode.children.find(c => c && (c.type === 'string_literal' || c.type === 'number_literal' || c.type === 'integer_literal'))?.text || 'value';
+      return { name, value };
     }
     return null;
   },
@@ -313,24 +314,12 @@ export const cConfig = {
     }
 
     const bodyBlock = node.children.find(c => c && (c.type === 'compound_statement'));
-    // For C, we need to look for both call_expression and expression_statement nodes
-    // that contain update_expressions (for increment/decrement)
     let calls = [];
     if (bodyBlock) {
-      // Get call expressions
-      calls = findAll(bodyBlock, 'call_expression');
-
-      // Also get expression statements that contain update expressions
-      const exprStatements = findAll(bodyBlock, 'expression_statement');
-      for (const stmt of exprStatements) {
-        if (stmt && stmt.children) {
-          // Look for update expressions
-          const updateExprs = findAll(stmt, 'update_expression');
-          if (updateExprs.length > 0) {
-            // This is an increment/decrement statement, add it to calls
-            calls.push(stmt);
-          }
-        }
+      if (bodyBlock.type === 'compound_statement' && bodyBlock.children) {
+        calls = bodyBlock.children.filter(c => c && c.type !== '{' && c.type !== '}');
+      } else {
+        calls = [bodyBlock];
       }
     }
     return { type: loopType, condition, calls };

@@ -352,24 +352,12 @@ export const pythonConfig = {
     }
 
     const bodyBlock = node.children.find(c => c.type === 'block' || c.type === 'expression_statement');
-    // For Python, we need to look for both call and expression_statement nodes
-    // that contain augmented_assignment (for +=, -=, etc.)
     let calls = [];
     if (bodyBlock) {
-      // Get call expressions
-      calls = findAll(bodyBlock, 'call');
-
-      // Also get expression statements that contain augmented assignments
-      const exprStatements = findAll(bodyBlock, 'expression_statement');
-      for (const stmt of exprStatements) {
-        if (stmt && stmt.children) {
-          // Look for augmented assignments
-          const augAssigns = findAll(stmt, 'augmented_assignment');
-          if (augAssigns.length > 0) {
-            // This is an augmented assignment statement, add it to calls
-            calls.push(stmt);
-          }
-        }
+      if (bodyBlock.type === 'block' && bodyBlock.children) {
+        calls = bodyBlock.children.filter(c => c && c.named);
+      } else {
+        calls = [bodyBlock];
       }
     }
     return { type: loopType, condition, calls };

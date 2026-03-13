@@ -1,0 +1,77 @@
+translation_unit (named) - #include <iostream>
+#include <
+  preproc_include (named) - #include <iostream>
+
+    #include - #include
+    system_lib_string (named) - <iostream>
+  preproc_include (named) - #include <vector>
+
+    #include - #include
+    system_lib_string (named) - <vector>
+  function_definition (named) - int main() {
+    std::vector<i
+    primitive_type (named) - int
+    function_declarator (named) - main()
+      identifier (named) - main
+      parameter_list (named) - ()
+        ( - (
+        ) - )
+    compound_statement (named) - {
+    std::vector<int> arr = {
+      { - {
+      declaration (named) - std::vector<int> arr = {1, 2, 
+        qualified_identifier (named) - std::vector<int>
+          namespace_identifier (named) - std
+          :: - ::
+          template_type (named) - vector<int>
+            type_identifier (named) - vector
+            template_argument_list (named) - <int>
+              < - <
+              type_descriptor (named) - int
+                primitive_type (named) - int
+              > - >
+        init_declarator (named) - arr = {1, 2, 3}
+          identifier (named) - arr
+          = - =
+          initializer_list (named) - {1, 2, 3}
+            { - {
+            number_literal (named) - 1
+            , - ,
+            number_literal (named) - 2
+            , - ,
+            number_literal (named) - 3
+            } - }
+        ; - ;
+      for_range_loop (named) - for (int val : arr) {
+        
+        for - for
+        ( - (
+        primitive_type (named) - int
+        identifier (named) - val
+        : - :
+        identifier (named) - arr
+        ) - )
+        compound_statement (named) - {
+        std::cout << val << 
+          { - {
+          expression_statement (named) - std::cout << val << std::endl;
+            binary_expression (named) - std::cout << val << std::endl
+              binary_expression (named) - std::cout << val
+                qualified_identifier (named) - std::cout
+                  namespace_identifier (named) - std
+                  :: - ::
+                  identifier (named) - cout
+                << - <<
+                identifier (named) - val
+              << - <<
+              qualified_identifier (named) - std::endl
+                namespace_identifier (named) - std
+                :: - ::
+                identifier (named) - endl
+            ; - ;
+          } - }
+      return_statement (named) - return 0;
+        return - return
+        number_literal (named) - 0
+        ; - ;
+      } - }

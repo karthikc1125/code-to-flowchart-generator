@@ -280,8 +280,23 @@ export const javascriptConfig = {
       const parts = [initPart, condPart, updatePart].filter(Boolean);
       condition = parts.join('; ');
     } else if (node.type === 'for_in_statement' || node.type === 'for_of_statement') {
-      const condNodes = node.children.filter(c => c && c.named);
-      condition = condNodes.map(c => textOf(c)).join(' ');
+      const isOf = node.type === 'for_of_statement';
+      const keyword = isOf ? 'of' : 'in';
+      
+      // Usually looks like: for (const key in obj) or for (let val of arr)
+      // We want to extract "key in obj" or "val of arr"
+      const leftNode = node.children.find(c => c && (c.type === 'lexical_declaration' || c.type === 'variable_declaration' || c.type === 'identifier'));
+      const rightNode = node.children.find(c => c && (c.type === 'identifier' || c.type === 'member_expression' || c.type === 'call_expression'));
+      
+      let leftText = leftNode ? textOf(leftNode) : 'item';
+      if (leftText.startsWith('const ') || leftText.startsWith('let ') || leftText.startsWith('var ')) {
+        leftText = leftText.split(' ').slice(1).join(' '); // remove declarative keyword
+      }
+      leftText = leftText.replace(';', '').trim();
+      
+      const rightText = rightNode ? textOf(rightNode) : 'collection';
+      
+      condition = `${leftText} ${keyword} ${rightText}`;
     } else if (node.type === 'do_statement') {
       const condNode = node.children.find(c => c && c.type === 'parenthesized_expression');
       condition = condNode ? textOf(condNode) : 'condition';

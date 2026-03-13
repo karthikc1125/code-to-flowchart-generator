@@ -1,0 +1,84 @@
+program (named) - const obj = { a: 1, b: 2 };
+fo
+  lexical_declaration (named) - const obj = { a: 1, b: 2 };
+    const - const
+    variable_declarator (named) - obj = { a: 1, b: 2 }
+      identifier (named) - obj
+      = - =
+      object (named) - { a: 1, b: 2 }
+        { - {
+        pair (named) - a: 1
+          property_identifier (named) - a
+          : - :
+          number (named) - 1
+        , - ,
+        pair (named) - b: 2
+          property_identifier (named) - b
+          : - :
+          number (named) - 2
+        } - }
+    ; - ;
+  for_in_statement (named) - for (const key in obj) {
+    c
+    for - for
+    ( - (
+    const - const
+    identifier (named) - key
+    in - in
+    identifier (named) - obj
+    ) - )
+    statement_block (named) - {
+    console.log(key);
+}
+      { - {
+      expression_statement (named) - console.log(key);
+        call_expression (named) - console.log(key)
+          member_expression (named) - console.log
+            identifier (named) - console
+            . - .
+            property_identifier (named) - log
+          arguments (named) - (key)
+            ( - (
+            identifier (named) - key
+            ) - )
+        ; - ;
+      } - }
+  lexical_declaration (named) - const arr = [1, 2, 3];
+    const - const
+    variable_declarator (named) - arr = [1, 2, 3]
+      identifier (named) - arr
+      = - =
+      array (named) - [1, 2, 3]
+        [ - [
+        number (named) - 1
+        , - ,
+        number (named) - 2
+        , - ,
+        number (named) - 3
+        ] - ]
+    ; - ;
+  for_in_statement (named) - for (const val of arr) {
+    c
+    for - for
+    ( - (
+    const - const
+    identifier (named) - val
+    of - of
+    identifier (named) - arr
+    ) - )
+    statement_block (named) - {
+    console.log(val);
+}
+      { - {
+      expression_statement (named) - console.log(val);
+        call_expression (named) - console.log(val)
+          member_expression (named) - console.log
+            identifier (named) - console
+            . - .
+            property_identifier (named) - log
+          arguments (named) - (val)
+            ( - (
+            identifier (named) - val
+            ) - )
+        ; - ;
+      } - }

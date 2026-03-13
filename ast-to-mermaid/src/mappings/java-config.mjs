@@ -363,30 +363,45 @@ export const javaConfig = {
       if (condition.startsWith('(') && condition.endsWith(')')) {
         condition = condition.substring(1, condition.length - 1);
       }
+    } else if (node.type === 'enhanced_for_statement') {
+      // Look for the elements around the colon `:`
+      const colonIndex = node.children.findIndex(c => c && c.type === ':');
+      if (colonIndex !== -1) {
+        // Find identifier before the colon
+        let leftIdent = 'item';
+        for (let i = colonIndex - 1; i >= 0; i--) {
+          if (node.children[i] && node.children[i].type === 'identifier') {
+            leftIdent = textOf(node.children[i]);
+            break;
+          }
+        }
+        
+        // Find expression after the colon
+        let rightExpr = 'collection';
+        for (let i = colonIndex + 1; i < node.children.length; i++) {
+          if (node.children[i] && node.children[i].named && node.children[i].type !== 'block') {
+            rightExpr = textOf(node.children[i]);
+            break; // Stop at the first named node after colon
+          }
+        }
+        
+        condition = `${leftIdent} in ${rightExpr}`;
+      } else {
+        const condNode = node.children.find(c => c && c.named);
+        condition = textOf(condNode) || 'condition';
+      }
     } else {
       const condNode = node.children.find(c => c && c.named);
       condition = textOf(condNode) || 'condition';
     }
 
     const bodyBlock = node.children.find(c => c && (c.type === 'block' || c.type === 'expression_statement'));
-    // For Java, we need to look for both method_invocation and expression_statement nodes
-    // that contain update_expressions (for increment/decrement)
     let calls = [];
     if (bodyBlock) {
-      // Get method invocations
-      calls = findAll(bodyBlock, 'method_invocation');
-
-      // Also get expression statements that contain update expressions
-      const exprStatements = findAll(bodyBlock, 'expression_statement');
-      for (const stmt of exprStatements) {
-        if (stmt && stmt.children) {
-          // Look for update expressions
-          const updateExprs = findAll(stmt, 'update_expression');
-          if (updateExprs.length > 0) {
-            // This is an increment/decrement statement, add it to calls
-            calls.push(stmt);
-          }
-        }
+      if (bodyBlock.type === 'block' && bodyBlock.children) {
+        calls = bodyBlock.children.filter(c => c && c.type !== '{' && c.type !== '}');
+      } else {
+        calls = [bodyBlock];
       }
     }
     return { type: loopType, condition, calls };

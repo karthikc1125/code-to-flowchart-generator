@@ -87,19 +87,27 @@ export const cppConfig = {
 
   isAssignment(node) {
     if (!node) return false;
-    return node.type === 'assignment_expression' || node.type === 'init_declarator';
+    return node.type === 'assignment_expression' || node.type === 'init_declarator' || node.type === 'declaration';
   },
 
   extractVariableInfo(node) {
     if (!node || !node.children) return null;
-    if (node.type === 'assignment_expression') {
-      const name = getVariableName(node.children.find(c => c && c.type === 'identifier'));
-      const value = node.children.find(c => c && (c.type === 'string_literal' || c.type === 'number_literal' || c.type === 'integer_literal'))?.text || 'value';
+    let targetNode = node;
+    
+    // If it's a declaration, find the init_declarator inside it
+    if (node.type === 'declaration') {
+      targetNode = node.children.find(c => c && c.type === 'init_declarator');
+      if (!targetNode) return null;
+    }
+
+    if (targetNode.type === 'assignment_expression') {
+      const name = getVariableName(targetNode.children.find(c => c && c.type === 'identifier'));
+      const value = targetNode.children.find(c => c && (c.type === 'string_literal' || c.type === 'number_literal' || c.type === 'integer_literal'))?.text || 'value';
       return { name, value };
     }
-    if (node.type === 'init_declarator') {
-      const name = getVariableName(node.children.find(c => c && c.type === 'identifier'));
-      const value = node.children.find(c => c && (c.type === 'string_literal' || c.type === 'number_literal' || c.type === 'integer_literal'))?.text || 'value';
+    if (targetNode.type === 'init_declarator') {
+      const name = getVariableName(targetNode.children.find(c => c && c.type === 'identifier'));
+      const value = targetNode.children.find(c => c && (c.type === 'string_literal' || c.type === 'number_literal' || c.type === 'integer_literal'))?.text || 'value';
       return { name, value };
     }
     return null;
@@ -298,7 +306,7 @@ export const cppConfig = {
 
   isLoop(node) {
     if (!node) return false;
-    return ['for_statement', 'while_statement', 'do_statement'].includes(node.type);
+    return ['for_statement', 'while_statement', 'do_statement', 'for_range_loop'].includes(node.type);
   },
 
   extractLoopInfo(node) {
@@ -332,43 +340,45 @@ export const cppConfig = {
       if (condition.startsWith('(') && condition.endsWith(')')) {
         condition = condition.substring(1, condition.length - 1);
       }
+    } else if (node.type === 'for_range_loop') {
+      // Look for the elements around the colon `:`
+      const colonIndex = node.children.findIndex(c => c && c.type === ':');
+      if (colonIndex !== -1) {
+        // Find identifier before the colon
+        let leftIdent = 'item';
+        for (let i = colonIndex - 1; i >= 0; i--) {
+          if (node.children[i] && node.children[i].type === 'identifier') {
+            leftIdent = textOf(node.children[i]);
+            break;
+          }
+        }
+        
+        // Find expression after the colon
+        let rightExpr = 'collection';
+        for (let i = colonIndex + 1; i < node.children.length; i++) {
+          if (node.children[i] && node.children[i].named && node.children[i].type !== 'compound_statement') {
+            rightExpr = textOf(node.children[i]);
+            break; // Stop at the first named node after colon
+          }
+        }
+        
+        condition = `${leftIdent} in ${rightExpr}`;
+      } else {
+        const condNode = node.children.find(c => c && c.named);
+        condition = textOf(condNode) || 'condition';
+      }
     } else {
       const condNode = node.children.find(c => c && c.named);
       condition = textOf(condNode) || 'condition';
     }
 
     const bodyBlock = node.children.find(c => c && (c.type === 'compound_statement'));
-    // For C++, we need to look for both call_expression and expression_statement nodes
-    // that contain binary_expressions (for cout statements) or update_expressions (for increment/decrement)
     let calls = [];
     if (bodyBlock) {
-      // Get call expressions
-      calls = findAll(bodyBlock, 'call_expression');
-
-      // Also get expression statements that contain cout operations or update expressions
-      const exprStatements = findAll(bodyBlock, 'expression_statement');
-      for (const stmt of exprStatements) {
-        if (stmt && stmt.children) {
-          // Look for binary expressions that might be cout statements
-          const binaryExprs = findAll(stmt, 'binary_expression');
-          let isCoutStatement = false;
-          for (const expr of binaryExprs) {
-            if (expr && /cout\s*<</.test(textOf(expr))) {
-              calls.push(stmt);
-              isCoutStatement = true;
-              break; // Only add the statement once
-            }
-          }
-
-          // If it's not a cout statement, check if it contains an update expression
-          if (!isCoutStatement) {
-            const updateExprs = findAll(stmt, 'update_expression');
-            if (updateExprs.length > 0) {
-              // This is an increment/decrement statement, add it to calls
-              calls.push(stmt);
-            }
-          }
-        }
+      if (bodyBlock.type === 'compound_statement' && bodyBlock.children) {
+        calls = bodyBlock.children.filter(c => c && c.type !== '{' && c.type !== '}');
+      } else {
+        calls = [bodyBlock];
       }
     }
     return { type: loopType, condition, calls };

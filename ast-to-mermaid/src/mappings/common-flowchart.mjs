@@ -1,5 +1,5 @@
 import { createFlowBuilder } from './_common.mjs';
-import { processSingleConditional } from './conditional-mapping.mjs';
+import { isComplexBlock, processComplexBlock } from './statements/smart-conditional-loops.mjs';
 
 // Utility function to get text from a node
 function textOf(node) {
@@ -16,11 +16,10 @@ export function processStatements(statements, flow, languageConfig, last, initia
 
     const currentLabel = isFirst ? initialLabel : undefined;
 
-    // 5. Conditionals (If/Else)
-    if (languageConfig.isConditional && languageConfig.isConditional(stmt)) {
-      // Pass isFirst and isElseIf to correctly identify if this statement is an 'else if'
+    // 5. Complex Blocks (Conditionals & Loops) N-Depth
+    if (isComplexBlock(stmt, languageConfig)) {
       const checkElseIf = isFirst ? isElseIf : false;
-      const result = processSingleConditional(stmt, flow, languageConfig, currentLast, currentLabel, processStatements, checkElseIf);
+      const result = processComplexBlock(stmt, flow, languageConfig, currentLast, currentLabel, processStatements, checkElseIf);
       currentLast = result.last;
       isFirst = false;
       continue;
@@ -77,21 +76,6 @@ export function processStatements(statements, flow, languageConfig, last, initia
       }
     }
 
-    // 6. Loops (For/While)
-    if (languageConfig.isLoop && languageConfig.isLoop(stmt)) {
-      const info = languageConfig.extractLoopInfo(stmt) || { type: 'loop', condition: 'condition', calls: [] };
-      const id = flow.addLoopStatement(stmt, `${info.type}: ${info.condition}`);
-      flow.link(currentLast, id, currentLabel);
-
-      const calls = Array.isArray(info.calls) ? info.calls : [];
-      if (calls.length > 0) {
-        const bodyRes = processStatements(calls, flow, languageConfig, id);
-        flow.link(bodyRes.last, id);
-      }
-      currentLast = id;
-      continue;
-    }
-
     // 7. Assignments
     if (languageConfig.isAssignment && languageConfig.isAssignment(stmt)) {
       const info = languageConfig.extractVariableInfo(stmt);
@@ -131,6 +115,7 @@ export function processStatements(statements, flow, languageConfig, last, initia
     }
   }
 
+  // console.log("processStatements generated last ID:", currentLast);
   return { last: currentLast };
 }
 

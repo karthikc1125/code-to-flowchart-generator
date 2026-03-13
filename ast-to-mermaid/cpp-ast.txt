@@ -1,0 +1,50 @@
+translation_unit (named) - int main() {\n    int i = 0;\n
+  function_definition (named) - int main() {\n    int i = 0;\n
+    primitive_type (named) - int
+    function_declarator (named) - main()
+      identifier (named) - main
+      parameter_list (named) - ()
+        ( - (
+        ) - )
+    compound_statement (named) - {\n    int i = 0;\n    do {\n 
+      { - {
+      declaration (named) - int i = 0;
+        primitive_type (named) - int
+        init_declarator (named) - i = 0
+          identifier (named) - i
+          = - =
+          number_literal (named) - 0
+        ; - ;
+      do_statement (named) - do {\n        cout << i << end
+        do - do
+        compound_statement (named) - {\n        cout << i << endl;\
+          { - {
+          expression_statement (named) - cout << i << endl;
+            binary_expression (named) - cout << i << endl
+              binary_expression (named) - cout << i
+                identifier (named) - cout
+                << - <<
+                identifier (named) - i
+              << - <<
+              identifier (named) - endl
+            ; - ;
+          expression_statement (named) - i++;
+            update_expression (named) - i++
+              identifier (named) - i
+              ++ - ++
+            ; - ;
+          } - }
+        while - while
+        parenthesized_expression (named) - (i < 5)
+          ( - (
+          binary_expression (named) - i < 5
+            identifier (named) - i
+            < - <
+            number_literal (named) - 5
+          ) - )
+        ; - ;
+      return_statement (named) - return 0;
+        return - return
+        number_literal (named) - 0
+        ; - ;
+      } - }

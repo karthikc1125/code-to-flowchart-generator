@@ -1,0 +1,1481 @@
+=== Testing Enhanced For Loops (for-in, for-of) ===
+
+Generating flowchart for JavaScript for-in...
+Normalized AST:
+{
+  "type": "program",
+  "text": "const obj = {a: 1, b: 2};\nfor (const key in obj) {\n  console.log(key);\n}\n    ",
+  "named": true,
+  "children": [
+    {
+      "type": "lexical_declaration",
+      "text": "const obj = {a: 1, b: 2};",
+      "named": true,
+      "children": [
+        {
+          "type": "const",
+          "text": "",
+          "named": false,
+          "children": []
+        },
+        {
+          "type": "variable_declarator",
+          "text": "obj = {a: 1, b: 2}",
+          "named": true,
+          "children": [
+            {
+              "type": "identifier",
+              "text": "obj",
+              "named": true,
+              "children": []
+            },
+            {
+              "type": "=",
+              "text": "",
+              "named": false,
+              "children": []
+            },
+            {
+              "type": "object",
+              "text": "{a: 1, b: 2}",
+              "named": true,
+              "children": [
+                {
+                  "type": "{",
+                  "text": "",
+                  "named": false,
+                  "children": []
+                },
+                {
+                  "type": "pair",
+                  "text": "a: 1",
+                  "named": true,
+                  "children": [
+                    {
+                      "type": "property_identifier",
+                      "text": "a",
+                      "named": true,
+                      "children": []
+                    },
+                    {
+                      "type": ":",
+                      "text": "",
+                      "named": false,
+                      "children": []
+                    },
+                    {
+                      "type": "number",
+                      "text": "1",
+                      "named": true,
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "type": ",",
+                  "text": "",
+                  "named": false,
+                  "children": []
+                },
+                {
+                  "type": "pair",
+                  "text": "b: 2",
+                  "named": true,
+                  "children": [
+                    {
+                      "type": "property_identifier",
+                      "text": "b",
+                      "named": true,
+                      "children": []
+                    },
+                    {
+                      "type": ":",
+                      "text": "",
+                      "named": false,
+                      "children": []
+                    },
+                    {
+                      "type": "number",
+                      "text": "2",
+                      "named": true,
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "type": "}",
+                  "text": "",
+                  "named": false,
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": ";",
+          "text": "",
+          "named": false,
+          "children": []
+        }
+      ]
+    },
+    {
+      "type": "for_in_statement",
+      "text": "for (const key in obj) {\n  console.log(key);\n}",
+      "named": true,
+      "children": [
+        {
+          "type": "for",
+          "text": "",
+          "named": false,
+          "children": []
+        },
+        {
+          "type": "(",
+          "text": "",
+          "named": false,
+          "children": []
+        },
+        {
+          "type": "const",
+          "text": "",
+          "named": false,
+          "children": []
+        },
+        {
+          "type": "identifier",
+          "text": "key",
+          "named": true,
+          "children": []
+        },
+        {
+          "type": "in",
+          "text": "",
+          "named": false,
+          "children": []
+        },
+        {
+          "type": "identifier",
+          "text": "obj",
+          "named": true,
+          "children": []
+        },
+        {
+          "type": ")",
+          "text": "",
+          "named": false,
+          "children": []
+        },
+        {
+          "type": "statement_block",
+          "text": "{\n  console.log(key);\n}",
+          "named": true,
+          "children": [
+            {
+              "type": "{",
+              "text": "",
+              "named": false,
+              "children": []
+            },
+            {
+              "type": "expression_statement",
+              "text": "console.log(key);",
+              "named": true,
+              "children": [
+                {
+                  "type": "call_expression",
+                  "text": "console.log(key)",
+                  "named": true,
+                  "children": [
+                    {
+                      "type": "member_expression",
+                      "text": "console.log",
+                      "named": true,
+                      "children": [
+                        {
+                          "type": "identifier",
+                          "text": "console",
+                          "named": true,
+                          "children": []
+                        },
+                        {
+                          "type": ".",
+                          "text": "",
+                          "named": false,
+                          "children": []
+                        },
+                        {
+                          "type": "property_identifier",
+                          "text": "log",
+                          "named": true,
+                          "children": []
+                        }
+                      ]
+                    },
+                    {
+                      "type": "arguments",
+                      "text": "(key)",
+                      "named": true,
+                      "children": [
+                        {
+                          "type": "(",
+                          "text": "",
+                          "named": false,
+                          "children": []
+                        },
+                        {
+                          "type": "identifier",
+                          "text": "key",
+                          "named": true,
+                          "children": []
+                        },
+                        {
+                          "type": ")",
+                          "text": "",
+                          "named": false,
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": ";",
+                  "text": "",
+                  "named": false,
+                  "children": []
+                }
+              ]
+            },
+            {
+              "type": "}",
+              "text": "",
+              "named": false,
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+[OK] Generated flowchart.
+flowchart TD
+N1([start])
+N2["obj = value"]
+N1 --> N2
+N3{"for each key in key"}
+N2 --> N3
+N4[/"console.log key"/]
+N3 --yes--> N4
+N4 --> N3
+N6([end])
+N3 --no--> N6
+
+Generating flowchart for JavaScript for-of...
+Normalized AST:
+{
+  "type": "program",
+  "text": "const arr = [1, 2, 3];\nfor (const val of arr) {\n  console.log(val);\n}\n    ",
+  "named": true,
+  "children": [
+    {
+      "type": "lexical_declaration",
+      "text": "const arr = [1, 2, 3];",
+      "named": true,
+      "children": [
+        {
+          "type": "const",
+          "text": "",
+          "named": false,
+          "children": []
+        },
+        {
+          "type": "variable_declarator",
+          "text": "arr = [1, 2, 3]",
+          "named": true,
+          "children": [
+            {
+              "type": "identifier",
+              "text": "arr",
+              "named": true,
+              "children": []
+            },
+            {
+              "type": "=",
+              "text": "",
+              "named": false,
+              "children": []
+            },
+            {
+              "type": "array",
+              "text": "[1, 2, 3]",
+              "named": true,
+              "children": [
+                {
+                  "type": "[",
+                  "text": "",
+                  "named": false,
+                  "children": []
+                },
+                {
+                  "type": "number",
+                  "text": "1",
+                  "named": true,
+                  "children": []
+                },
+                {
+                  "type": ",",
+                  "text": "",
+                  "named": false,
+                  "children": []
+                },
+                {
+                  "type": "number",
+                  "text": "2",
+                  "named": true,
+                  "children": []
+                },
+                {
+                  "type": ",",
+                  "text": "",
+                  "named": false,
+                  "children": []
+                },
+                {
+                  "type": "number",
+                  "text": "3",
+                  "named": true,
+                  "children": []
+                },
+                {
+                  "type": "]",
+                  "text": "",
+                  "named": false,
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": ";",
+          "text": "",
+          "named": false,
+          "children": []
+        }
+      ]
+    },
+    {
+      "type": "for_in_statement",
+      "text": "for (const val of arr) {\n  console.log(val);\n}",
+      "named": true,
+      "children": [
+        {
+          "type": "for",
+          "text": "",
+          "named": false,
+          "children": []
+        },
+        {
+          "type": "(",
+          "text": "",
+          "named": false,
+          "children": []
+        },
+        {
+          "type": "const",
+          "text": "",
+          "named": false,
+          "children": []
+        },
+        {
+          "type": "identifier",
+          "text": "val",
+          "named": true,
+          "children": []
+        },
+        {
+          "type": "of",
+          "text": "",
+          "named": false,
+          "children": []
+        },
+        {
+          "type": "identifier",
+          "text": "arr",
+          "named": true,
+          "children": []
+        },
+        {
+          "type": ")",
+          "text": "",
+          "named": false,
+          "children": []
+        },
+        {
+          "type": "statement_block",
+          "text": "{\n  console.log(val);\n}",
+          "named": true,
+          "children": [
+            {
+              "type": "{",
+              "text": "",
+              "named": false,
+              "children": []
+            },
+            {
+              "type": "expression_statement",
+              "text": "console.log(val);",
+              "named": true,
+              "children": [
+                {
+                  "type": "call_expression",
+                  "text": "console.log(val)",
+                  "named": true,
+                  "children": [
+                    {
+                      "type": "member_expression",
+                      "text": "console.log",
+                      "named": true,
+                      "children": [
+                        {
+                          "type": "identifier",
+                          "text": "console",
+                          "named": true,
+                          "children": []
+                        },
+                        {
+                          "type": ".",
+                          "text": "",
+                          "named": false,
+                          "children": []
+                        },
+                        {
+                          "type": "property_identifier",
+                          "text": "log",
+                          "named": true,
+                          "children": []
+                        }
+                      ]
+                    },
+                    {
+                      "type": "arguments",
+                      "text": "(val)",
+                      "named": true,
+                      "children": [
+                        {
+                          "type": "(",
+                          "text": "",
+                          "named": false,
+                          "children": []
+                        },
+                        {
+                          "type": "identifier",
+                          "text": "val",
+                          "named": true,
+                          "children": []
+                        },
+                        {
+                          "type": ")",
+                          "text": "",
+                          "named": false,
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": ";",
+                  "text": "",
+                  "named": false,
+                  "children": []
+                }
+              ]
+            },
+            {
+              "type": "}",
+              "text": "",
+              "named": false,
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+[OK] Generated flowchart.
+flowchart TD
+N1([start])
+N2["arr = value"]
+N1 --> N2
+N3{"for each val in val"}
+N2 --> N3
+N4[/"console.log val"/]
+N3 --yes--> N4
+N4 --> N3
+N6([end])
+N3 --no--> N6
+
+Generating flowchart for Java enhanced_for...
+Normalized AST:
+{
+  "type": "program",
+  "text": "class Test {\n  public static void main(String[] args) {\n    String[] arr = {\"a\", \"b\", \"c\"};\n    for (String val : arr) {\n      System.out.println(val);\n    }\n  }\n}\n    ",
+  "named": true,
+  "children": [
+    {
+      "type": "class_declaration",
+      "text": "class Test {\n  public static void main(String[] args) {\n    String[] arr = {\"a\", \"b\", \"c\"};\n    for (String val : arr) {\n      System.out.println(val);\n    }\n  }\n}",
+      "named": true,
+      "children": [
+        {
+          "type": "class",
+          "text": "",
+          "named": false,
+          "children": []
+        },
+        {
+          "type": "identifier",
+          "text": "Test",
+          "named": true,
+          "children": []
+        },
+        {
+          "type": "class_body",
+          "text": "{\n  public static void main(String[] args) {\n    String[] arr = {\"a\", \"b\", \"c\"};\n    for (String val : arr) {\n      System.out.println(val);\n    }\n  }\n}",
+          "named": true,
+          "children": [
+            {
+              "type": "{",
+              "text": "",
+              "named": false,
+              "children": []
+            },
+            {
+              "type": "method_declaration",
+              "text": "public static void main(String[] args) {\n    String[] arr = {\"a\", \"b\", \"c\"};\n    for (String val : arr) {\n      System.out.println(val);\n    }\n  }",
+              "named": true,
+              "children": [
+                {
+                  "type": "modifiers",
+                  "text": "public static",
+                  "named": true,
+                  "children": [
+                    {
+                      "type": "public",
+                      "text": "",
+                      "named": false,
+                      "children": []
+                    },
+                    {
+                      "type": "static",
+                      "text": "",
+                      "named": false,
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "type": "void_type",
+                  "text": "void",
+                  "named": true,
+                  "children": []
+                },
+                {
+                  "type": "identifier",
+                  "text": "main",
+                  "named": true,
+                  "children": []
+                },
+                {
+                  "type": "formal_parameters",
+                  "text": "(String[] args)",
+                  "named": true,
+                  "children": [
+                    {
+                      "type": "(",
+                      "text": "",
+                      "named": false,
+                      "children": []
+                    },
+                    {
+                      "type": "formal_parameter",
+                      "text": "String[] args",
+                      "named": true,
+                      "children": [
+                        {
+                          "type": "array_type",
+                          "text": "String[]",
+                          "named": true,
+                          "children": [
+                            {
+                              "type": "type_identifier",
+                              "text": "String",
+                              "named": true,
+                              "children": []
+                            },
+                            {
+                              "type": "dimensions",
+                              "text": "[]",
+                              "named": true,
+                              "children": [
+                                {
+                                  "type": "[",
+                                  "text": "",
+                                  "named": false,
+                                  "children": []
+                                },
+                                {
+                                  "type": "]",
+                                  "text": "",
+                                  "named": false,
+                                  "children": []
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "identifier",
+                          "text": "args",
+                          "named": true,
+                          "children": []
+                        }
+                      ]
+                    },
+                    {
+                      "type": ")",
+                      "text": "",
+                      "named": false,
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "type": "block",
+                  "text": "{\n    String[] arr = {\"a\", \"b\", \"c\"};\n    for (String val : arr) {\n      System.out.println(val);\n    }\n  }",
+                  "named": true,
+                  "children": [
+                    {
+                      "type": "{",
+                      "text": "",
+                      "named": false,
+                      "children": []
+                    },
+                    {
+                      "type": "local_variable_declaration",
+                      "text": "String[] arr = {\"a\", \"b\", \"c\"};",
+                      "named": true,
+                      "children": [
+                        {
+                          "type": "array_type",
+                          "text": "String[]",
+                          "named": true,
+                          "children": [
+                            {
+                              "type": "type_identifier",
+                              "text": "String",
+                              "named": true,
+                              "children": []
+                            },
+                            {
+                              "type": "dimensions",
+                              "text": "[]",
+                              "named": true,
+                              "children": [
+                                {
+                                  "type": "[",
+                                  "text": "",
+                                  "named": false,
+                                  "children": []
+                                },
+                                {
+                                  "type": "]",
+                                  "text": "",
+                                  "named": false,
+                                  "children": []
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "variable_declarator",
+                          "text": "arr = {\"a\", \"b\", \"c\"}",
+                          "named": true,
+                          "children": [
+                            {
+                              "type": "identifier",
+                              "text": "arr",
+                              "named": true,
+                              "children": []
+                            },
+                            {
+                              "type": "=",
+                              "text": "",
+                              "named": false,
+                              "children": []
+                            },
+                            {
+                              "type": "array_initializer",
+                              "text": "{\"a\", \"b\", \"c\"}",
+                              "named": true,
+                              "children": [
+                                {
+                                  "type": "{",
+                                  "text": "",
+                                  "named": false,
+                                  "children": []
+                                },
+                                {
+                                  "type": "string_literal",
+                                  "text": "\"a\"",
+                                  "named": true,
+                                  "children": [
+                                    {
+                                      "type": "\"",
+                                      "text": "",
+                                      "named": false,
+                                      "children": []
+                                    },
+                                    {
+                                      "type": "string_fragment",
+                                      "text": "a",
+                                      "named": true,
+                                      "children": []
+                                    },
+                                    {
+                                      "type": "\"",
+                                      "text": "",
+                                      "named": false,
+                                      "children": []
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": ",",
+                                  "text": "",
+                                  "named": false,
+                                  "children": []
+                                },
+                                {
+                                  "type": "string_literal",
+                                  "text": "\"b\"",
+                                  "named": true,
+                                  "children": [
+                                    {
+                                      "type": "\"",
+                                      "text": "",
+                                      "named": false,
+                                      "children": []
+                                    },
+                                    {
+                                      "type": "string_fragment",
+                                      "text": "b",
+                                      "named": true,
+                                      "children": []
+                                    },
+                                    {
+                                      "type": "\"",
+                                      "text": "",
+                                      "named": false,
+                                      "children": []
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": ",",
+                                  "text": "",
+                                  "named": false,
+                                  "children": []
+                                },
+                                {
+                                  "type": "string_literal",
+                                  "text": "\"c\"",
+                                  "named": true,
+                                  "children": [
+                                    {
+                                      "type": "\"",
+                                      "text": "",
+                                      "named": false,
+                                      "children": []
+                                    },
+                                    {
+                                      "type": "string_fragment",
+                                      "text": "c",
+                                      "named": true,
+                                      "children": []
+                                    },
+                                    {
+                                      "type": "\"",
+                                      "text": "",
+                                      "named": false,
+                                      "children": []
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "}",
+                                  "text": "",
+                                  "named": false,
+                                  "children": []
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": ";",
+                          "text": "",
+                          "named": false,
+                          "children": []
+                        }
+                      ]
+                    },
+                    {
+                      "type": "enhanced_for_statement",
+                      "text": "for (String val : arr) {\n      System.out.println(val);\n    }",
+                      "named": true,
+                      "children": [
+                        {
+                          "type": "for",
+                          "text": "",
+                          "named": false,
+                          "children": []
+                        },
+                        {
+                          "type": "(",
+                          "text": "",
+                          "named": false,
+                          "children": []
+                        },
+                        {
+                          "type": "type_identifier",
+                          "text": "String",
+                          "named": true,
+                          "children": []
+                        },
+                        {
+                          "type": "identifier",
+                          "text": "val",
+                          "named": true,
+                          "children": []
+                        },
+                        {
+                          "type": ":",
+                          "text": "",
+                          "named": false,
+                          "children": []
+                        },
+                        {
+                          "type": "identifier",
+                          "text": "arr",
+                          "named": true,
+                          "children": []
+                        },
+                        {
+                          "type": ")",
+                          "text": "",
+                          "named": false,
+                          "children": []
+                        },
+                        {
+                          "type": "block",
+                          "text": "{\n      System.out.println(val);\n    }",
+                          "named": true,
+                          "children": [
+                            {
+                              "type": "{",
+                              "text": "",
+                              "named": false,
+                              "children": []
+                            },
+                            {
+                              "type": "expression_statement",
+                              "text": "System.out.println(val);",
+                              "named": true,
+                              "children": [
+                                {
+                                  "type": "method_invocation",
+                                  "text": "System.out.println(val)",
+                                  "named": true,
+                                  "children": [
+                                    {
+                                      "type": "field_access",
+                                      "text": "System.out",
+                                      "named": true,
+                                      "children": [
+                                        {
+                                          "type": "identifier",
+                                          "text": "System",
+                                          "named": true,
+                                          "children": []
+                                        },
+                                        {
+                                          "type": ".",
+                                          "text": "",
+                                          "named": false,
+                                          "children": []
+                                        },
+                                        {
+                                          "type": "identifier",
+                                          "text": "out",
+                                          "named": true,
+                                          "children": []
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": ".",
+                                      "text": "",
+                                      "named": false,
+                                      "children": []
+                                    },
+                                    {
+                                      "type": "identifier",
+                                      "text": "println",
+                                      "named": true,
+                                      "children": []
+                                    },
+                                    {
+                                      "type": "argument_list",
+                                      "text": "(val)",
+                                      "named": true,
+                                      "children": [
+                                        {
+                                          "type": "(",
+                                          "text": "",
+                                          "named": false,
+                                          "children": []
+                                        },
+                                        {
+                                          "type": "identifier",
+                                          "text": "val",
+                                          "named": true,
+                                          "children": []
+                                        },
+                                        {
+                                          "type": ")",
+                                          "text": "",
+                                          "named": false,
+                                          "children": []
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": ";",
+                                  "text": "",
+                                  "named": false,
+                                  "children": []
+                                }
+                              ]
+                            },
+                            {
+                              "type": "}",
+                              "text": "",
+                              "named": false,
+                              "children": []
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "}",
+                      "text": "",
+                      "named": false,
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "}",
+              "text": "",
+              "named": false,
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+[OK] Generated flowchart.
+flowchart TD
+N1([start])
+N2["arr = value"]
+N1 --> N2
+N3{"for each val in arr"}
+N2 --> N3
+N4[/"System.out.println val"/]
+N3 --yes--> N4
+N4 --> N3
+N6([end])
+N3 --no--> N6
+
+Generating flowchart for C++ for_range_loop...
+Normalized AST:
+{
+  "type": "translation_unit",
+  "text": "#include <iostream>\n#include <vector>\n\nint main() {\n  std::vector<int> arr = {1, 2, 3};\n  for (int val : arr) {\n    std::cout << val << std::endl;\n  }\n  return 0;\n}\n    ",
+  "named": true,
+  "children": [
+    {
+      "type": "preproc_include",
+      "text": "#include <iostream>\n",
+      "named": true,
+      "children": [
+        {
+          "type": "#include",
+          "text": "",
+          "named": false,
+          "children": []
+        },
+        {
+          "type": "system_lib_string",
+          "text": "<iostream>",
+          "named": true,
+          "children": []
+        }
+      ]
+    },
+    {
+      "type": "preproc_include",
+      "text": "#include <vector>\n",
+      "named": true,
+      "children": [
+        {
+          "type": "#include",
+          "text": "",
+          "named": false,
+          "children": []
+        },
+        {
+          "type": "system_lib_string",
+          "text": "<vector>",
+          "named": true,
+          "children": []
+        }
+      ]
+    },
+    {
+      "type": "function_definition",
+      "text": "int main() {\n  std::vector<int> arr = {1, 2, 3};\n  for (int val : arr) {\n    std::cout << val << std::endl;\n  }\n  return 0;\n}",
+      "named": true,
+      "children": [
+        {
+          "type": "primitive_type",
+          "text": "int",
+          "named": true,
+          "children": []
+        },
+        {
+          "type": "function_declarator",
+          "text": "main()",
+          "named": true,
+          "children": [
+            {
+              "type": "identifier",
+              "text": "main",
+              "named": true,
+              "children": []
+            },
+            {
+              "type": "parameter_list",
+              "text": "()",
+              "named": true,
+              "children": [
+                {
+                  "type": "(",
+                  "text": "",
+                  "named": false,
+                  "children": []
+                },
+                {
+                  "type": ")",
+                  "text": "",
+                  "named": false,
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "compound_statement",
+          "text": "{\n  std::vector<int> arr = {1, 2, 3};\n  for (int val : arr) {\n    std::cout << val << std::endl;\n  }\n  return 0;\n}",
+          "named": true,
+          "children": [
+            {
+              "type": "{",
+              "text": "",
+              "named": false,
+              "children": []
+            },
+            {
+              "type": "declaration",
+              "text": "std::vector<int> arr = {1, 2, 3};",
+              "named": true,
+              "children": [
+                {
+                  "type": "qualified_identifier",
+                  "text": "std::vector<int>",
+                  "named": true,
+                  "children": [
+                    {
+                      "type": "namespace_identifier",
+                      "text": "std",
+                      "named": true,
+                      "children": []
+                    },
+                    {
+                      "type": "::",
+                      "text": "",
+                      "named": false,
+                      "children": []
+                    },
+                    {
+                      "type": "template_type",
+                      "text": "vector<int>",
+                      "named": true,
+                      "children": [
+                        {
+                          "type": "type_identifier",
+                          "text": "vector",
+                          "named": true,
+                          "children": []
+                        },
+                        {
+                          "type": "template_argument_list",
+                          "text": "<int>",
+                          "named": true,
+                          "children": [
+                            {
+                              "type": "<",
+                              "text": "",
+                              "named": false,
+                              "children": []
+                            },
+                            {
+                              "type": "type_descriptor",
+                              "text": "int",
+                              "named": true,
+                              "children": [
+                                {
+                                  "type": "primitive_type",
+                                  "text": "int",
+                                  "named": true,
+                                  "children": []
+                                }
+                              ]
+                            },
+                            {
+                              "type": ">",
+                              "text": "",
+                              "named": false,
+                              "children": []
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "init_declarator",
+                  "text": "arr = {1, 2, 3}",
+                  "named": true,
+                  "children": [
+                    {
+                      "type": "identifier",
+                      "text": "arr",
+                      "named": true,
+                      "children": []
+                    },
+                    {
+                      "type": "=",
+                      "text": "",
+                      "named": false,
+                      "children": []
+                    },
+                    {
+                      "type": "initializer_list",
+                      "text": "{1, 2, 3}",
+                      "named": true,
+                      "children": [
+                        {
+                          "type": "{",
+                          "text": "",
+                          "named": false,
+                          "children": []
+                        },
+                        {
+                          "type": "number_literal",
+                          "text": "1",
+                          "named": true,
+                          "children": []
+                        },
+                        {
+                          "type": ",",
+                          "text": "",
+                          "named": false,
+                          "children": []
+                        },
+                        {
+                          "type": "number_literal",
+                          "text": "2",
+                          "named": true,
+                          "children": []
+                        },
+                        {
+                          "type": ",",
+                          "text": "",
+                          "named": false,
+                          "children": []
+                        },
+                        {
+                          "type": "number_literal",
+                          "text": "3",
+                          "named": true,
+                          "children": []
+                        },
+                        {
+                          "type": "}",
+                          "text": "",
+                          "named": false,
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": ";",
+                  "text": "",
+                  "named": false,
+                  "children": []
+                }
+              ]
+            },
+            {
+              "type": "for_range_loop",
+              "text": "for (int val : arr) {\n    std::cout << val << std::endl;\n  }",
+              "named": true,
+              "children": [
+                {
+                  "type": "for",
+                  "text": "",
+                  "named": false,
+                  "children": []
+                },
+                {
+                  "type": "(",
+                  "text": "",
+                  "named": false,
+                  "children": []
+                },
+                {
+                  "type": "primitive_type",
+                  "text": "int",
+                  "named": true,
+                  "children": []
+                },
+                {
+                  "type": "identifier",
+                  "text": "val",
+                  "named": true,
+                  "children": []
+                },
+                {
+                  "type": ":",
+                  "text": "",
+                  "named": false,
+                  "children": []
+                },
+                {
+                  "type": "identifier",
+                  "text": "arr",
+                  "named": true,
+                  "children": []
+                },
+                {
+                  "type": ")",
+                  "text": "",
+                  "named": false,
+                  "children": []
+                },
+                {
+                  "type": "compound_statement",
+                  "text": "{\n    std::cout << val << std::endl;\n  }",
+                  "named": true,
+                  "children": [
+                    {
+                      "type": "{",
+                      "text": "",
+                      "named": false,
+                      "children": []
+                    },
+                    {
+                      "type": "expression_statement",
+                      "text": "std::cout << val << std::endl;",
+                      "named": true,
+                      "children": [
+                        {
+                          "type": "binary_expression",
+                          "text": "std::cout << val << std::endl",
+                          "named": true,
+                          "children": [
+                            {
+                              "type": "binary_expression",
+                              "text": "std::cout << val",
+                              "named": true,
+                              "children": [
+                                {
+                                  "type": "qualified_identifier",
+                                  "text": "std::cout",
+                                  "named": true,
+                                  "children": [
+                                    {
+                                      "type": "namespace_identifier",
+                                      "text": "std",
+                                      "named": true,
+                                      "children": []
+                                    },
+                                    {
+                                      "type": "::",
+                                      "text": "",
+                                      "named": false,
+                                      "children": []
+                                    },
+                                    {
+                                      "type": "identifier",
+                                      "text": "cout",
+                                      "named": true,
+                                      "children": []
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "<<",
+                                  "text": "",
+                                  "named": false,
+                                  "children": []
+                                },
+                                {
+                                  "type": "identifier",
+                                  "text": "val",
+                                  "named": true,
+                                  "children": []
+                                }
+                              ]
+                            },
+                            {
+                              "type": "<<",
+                              "text": "",
+                              "named": false,
+                              "children": []
+                            },
+                            {
+                              "type": "qualified_identifier",
+                              "text": "std::endl",
+                              "named": true,
+                              "children": [
+                                {
+                                  "type": "namespace_identifier",
+                                  "text": "std",
+                                  "named": true,
+                                  "children": []
+                                },
+                                {
+                                  "type": "::",
+                                  "text": "",
+                                  "named": false,
+                                  "children": []
+                                },
+                                {
+                                  "type": "identifier",
+                                  "text": "endl",
+                                  "named": true,
+                                  "children": []
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": ";",
+                          "text": "",
+                          "named": false,
+                          "children": []
+                        }
+                      ]
+                    },
+                    {
+                      "type": "}",
+                      "text": "",
+                      "named": false,
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "return_statement",
+              "text": "return 0;",
+              "named": true,
+              "children": [
+                {
+                  "type": "return",
+                  "text": "",
+                  "named": false,
+                  "children": []
+                },
+                {
+                  "type": "number_literal",
+                  "text": "0",
+                  "named": true,
+                  "children": []
+                },
+                {
+                  "type": ";",
+                  "text": "",
+                  "named": false,
+                  "children": []
+                }
+              ]
+            },
+            {
+              "type": "}",
+              "text": "",
+              "named": false,
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+[OK] Generated flowchart.
+flowchart TD
+N1([start])
+N2["arr = value"]
+N1 --> N2
+N3{"for_range_loop: val in arr"}
+N2 --> N3
+N4[/"cout val std::"/]
+N3 --yes--> N4
+N4 --> N3
+N6>"return 0"]
+N3 --no--> N6
+N7([end])
+N6 --> N7

@@ -1,0 +1,83 @@
+program (named) - class Test {
+    public static
+  class_declaration (named) - class Test {
+    public static
+    class - class
+    identifier (named) - Test
+    class_body (named) - {
+    public static void main(
+      { - {
+      method_declaration (named) - public static void main(String
+        modifiers (named) - public static
+          public - public
+          static - static
+        void_type (named) - void
+        identifier (named) - main
+        formal_parameters (named) - (String[] args)
+          ( - (
+          formal_parameter (named) - String[] args
+            array_type (named) - String[]
+              type_identifier (named) - String
+              dimensions (named) - []
+                [ - [
+                ] - ]
+            identifier (named) - args
+          ) - )
+        block (named) - {
+        String[] arr = {"a",
+          { - {
+          local_variable_declaration (named) - String[] arr = {"a", "b", "c"}
+            array_type (named) - String[]
+              type_identifier (named) - String
+              dimensions (named) - []
+                [ - [
+                ] - ]
+            variable_declarator (named) - arr = {"a", "b", "c"}
+              identifier (named) - arr
+              = - =
+              array_initializer (named) - {"a", "b", "c"}
+                { - {
+                string_literal (named) - "a"
+                  " - "
+                  string_fragment (named) - a
+                  " - "
+                , - ,
+                string_literal (named) - "b"
+                  " - "
+                  string_fragment (named) - b
+                  " - "
+                , - ,
+                string_literal (named) - "c"
+                  " - "
+                  string_fragment (named) - c
+                  " - "
+                } - }
+            ; - ;
+          enhanced_for_statement (named) - for (String val : arr) {
+     
+            for - for
+            ( - (
+            type_identifier (named) - String
+            identifier (named) - val
+            : - :
+            identifier (named) - arr
+            ) - )
+            block (named) - {
+            System.out.print
+              { - {
+              expression_statement (named) - System.out.println(val);
+                method_invocation (named) - System.out.println(val)
+                  field_access (named) - System.out
+                    identifier (named) - System
+                    . - .
+                    identifier (named) - out
+                  . - .
+                  identifier (named) - println
+                  argument_list (named) - (val)
+                    ( - (
+                    identifier (named) - val
+                    ) - )
+                ; - ;
+              } - }
+          } - }
+      } - }
