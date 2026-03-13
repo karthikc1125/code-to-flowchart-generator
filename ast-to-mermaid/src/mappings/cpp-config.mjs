@@ -401,6 +401,19 @@ export const cppConfig = {
     return { value: cleanValue };
   },
 
+  isThrowStatement(node) {
+    if (!node) return false;
+    return node.type === 'throw_statement';
+  },
+
+  extractThrowInfo(node) {
+    if (!node || !node.children) return { value: '' };
+    const throwExpr = node.children.find(c => c && c.type !== 'throw');
+    const value = throwExpr ? textOf(throwExpr) : '';
+    const cleanValue = value.replace(/[\[\]{}]/g, '').trim();
+    return { value: cleanValue };
+  },
+
   isBreakStatement(node) {
     if (!node) return false;
     return node.type === 'break_statement';
@@ -409,5 +422,47 @@ export const cppConfig = {
   isContinueStatement(node) {
     if (!node) return false;
     return node.type === 'continue_statement';
+  },
+
+  isTryCatch(node) {
+    if (!node) return false;
+    return node.type === 'try_statement';
+  },
+
+  extractTryCatchInfo(node) {
+    if (!node || node.type !== 'try_statement') return { tryBlock: [], catchBlocks: [], finallyBlock: [] };
+
+    let tryBlock = [];
+    const catchBlocks = [];
+    let finallyBlock = [];
+
+    // The try body is usually the first compound_statement child
+    const tryBodyNode = node.children.find(c => c && c.type === 'compound_statement');
+    if (tryBodyNode && tryBodyNode.children) {
+      tryBlock = tryBodyNode.children.filter(c => c && c.type !== '{' && c.type !== '}');
+    }
+
+    // Catch clauses
+    const catchNodes = node.children.filter(c => c && c.type === 'catch_clause');
+    for (const catchNode of catchNodes) {
+      let condition = 'error';
+      // C++ catch usually has parameter_list
+      const paramList = catchNode.children.find(c => c && c.type === 'parameter_list');
+      if (paramList) {
+        condition = textOf(paramList);
+        if (condition.startsWith('(') && condition.endsWith(')')) {
+          condition = condition.substring(1, condition.length - 1);
+        }
+      }
+
+      const catchBodyNode = catchNode.children.find(c => c && c.type === 'compound_statement');
+      let block = [];
+      if (catchBodyNode && catchBodyNode.children) {
+        block = catchBodyNode.children.filter(c => c && c.type !== '{' && c.type !== '}');
+      }
+      catchBlocks.push({ condition, block });
+    }
+
+    return { tryBlock, catchBlocks, finallyBlock };
   }
 };

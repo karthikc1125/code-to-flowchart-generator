@@ -421,6 +421,17 @@ export const javaConfig = {
     return { value: returnExpr ? textOf(returnExpr) : '' };
   },
 
+  isThrowStatement(node) {
+    if (!node) return false;
+    return node.type === 'throw_statement';
+  },
+
+  extractThrowInfo(node) {
+    if (!node || !node.children) return { value: '' };
+    const throwExpr = node.children.find(c => c && c.named && c.type !== 'throw');
+    return { value: throwExpr ? textOf(throwExpr) : '' };
+  },
+
   isBreakStatement(node) {
     if (!node) return false;
     return node.type === 'break_statement';
@@ -429,5 +440,58 @@ export const javaConfig = {
   isContinueStatement(node) {
     if (!node) return false;
     return node.type === 'continue_statement';
+  },
+
+  isTryCatch(node) {
+    if (!node) return false;
+    return node.type === 'try_statement';
+  },
+
+  extractTryCatchInfo(node) {
+    if (!node || node.type !== 'try_statement') return { tryBlock: [], catchBlocks: [], finallyBlock: [] };
+
+    let tryBlock = [];
+    const catchBlocks = [];
+    let finallyBlock = [];
+
+    // The try body is usually the first block child
+    const tryBodyNode = node.children.find(c => c && c.type === 'block');
+    if (tryBodyNode && tryBodyNode.children) {
+      tryBlock = tryBodyNode.children.filter(c => c && c.type !== '{' && c.type !== '}');
+    }
+
+    // Catch clauses
+    const catchNodes = node.children.filter(c => c && c.type === 'catch_clause');
+    for (const catchNode of catchNodes) {
+      let condition = 'error';
+      const catchFormalParam = catchNode.children.find(c => c && c.type === 'catch_formal_parameter');
+      if (catchFormalParam) {
+        condition = textOf(catchFormalParam);
+        if (condition.startsWith('(') && condition.endsWith(')')) {
+          condition = condition.substring(1, condition.length - 1);
+        }
+      } else {
+        const parenExpr = catchNode.children.find(c => c && c.type === 'parenthesized_expression');
+        if (parenExpr) condition = textOf(parenExpr);
+      }
+
+      const catchBodyNode = catchNode.children.find(c => c && c.type === 'block');
+      let block = [];
+      if (catchBodyNode && catchBodyNode.children) {
+        block = catchBodyNode.children.filter(c => c && c.type !== '{' && c.type !== '}');
+      }
+      catchBlocks.push({ condition, block });
+    }
+
+    // Finally clause
+    const finallyNode = node.children.find(c => c && c.type === 'finally_clause');
+    if (finallyNode) {
+      const finallyBodyNode = finallyNode.children.find(c => c && c.type === 'block');
+      if (finallyBodyNode && finallyBodyNode.children) {
+        finallyBlock = finallyBodyNode.children.filter(c => c && c.type !== '{' && c.type !== '}');
+      }
+    }
+
+    return { tryBlock, catchBlocks, finallyBlock };
   }
 };

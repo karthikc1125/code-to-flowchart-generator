@@ -39,6 +39,14 @@ export function mapSmartConditional(node, flow, languageConfig, last, initialLab
         if (processor) {
             // Process the nested block utilizing our smart else-if check
             const result = processor(nodes, flow, languageConfig, startId, label, checkElseIf);
+            
+            if (result.terminated || !result.last) {
+                return {
+                    lastIds: [],
+                    exitLabels: []
+                };
+            }
+            
             return {
                 lastIds: [result.last],
                 exitLabels: [""]

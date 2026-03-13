@@ -1,5 +1,6 @@
 import { mapSmartConditional } from './conditional/smart-conditional.mjs';
 import { mapSmartLoop } from './loops/smart-loop.mjs';
+import { mapTryCatch } from './try-catch-block.mjs';
 
 /**
  * Smart Conditional & Loops N-Depth Orchestrator
@@ -11,7 +12,8 @@ import { mapSmartLoop } from './loops/smart-loop.mjs';
 export function isComplexBlock(node, languageConfig) {
     const isCond = languageConfig.isConditional && languageConfig.isConditional(node);
     const isLoop = languageConfig.isLoop && languageConfig.isLoop(node);
-    return isCond || isLoop;
+    const isTry = languageConfig.isTryCatch && languageConfig.isTryCatch(node);
+    return isCond || isLoop || isTry;
 }
 
 export function processComplexBlock(node, flow, languageConfig, last, initialLabel = "", processSequenceRecursive = null, isElseIf = false) {
@@ -23,6 +25,11 @@ export function processComplexBlock(node, flow, languageConfig, last, initialLab
     // 2. Loops (For, While, Do-While, Enhanced)
     if (languageConfig.isLoop && languageConfig.isLoop(node)) {
         return mapSmartLoop(node, flow, languageConfig, last, initialLabel, processSequenceRecursive);
+    }
+
+    // 3. Try/Catch Blocks
+    if (languageConfig.isTryCatch && languageConfig.isTryCatch(node)) {
+        return mapTryCatch(node, flow, languageConfig, last, initialLabel, processSequenceRecursive);
     }
     
     return { last };

@@ -1,0 +1,97 @@
+=== JavaScript ===
+flowchart TD
+N1([start])
+N2["try"]
+N1 --> N2
+N3["user = value"]
+N2 --> N3
+N4[/"console.log &quot;Found user&quot;"/]
+N3 --> N4
+N5{"if: (user == null)?"}
+N4 --> N5
+N6["throw new Error(&quot;No user&quot;)"]
+N5 --yes--> N6
+N8["catch: error"]
+N6 --error--> N8
+N5 --no--> N8
+N9[/"console.log error"/]
+N8 --> N9
+N10["finally"]
+N5 --no--> N10
+N9 --> N10
+N11[/"console.log &quot;Cleanup&quot;"/]
+N10 --> N11
+N12([end])
+N11 --> N12
+\n
+=== Java ===
+flowchart TD
+N1([start])
+N2["try"]
+N1 --> N2
+N3[/"System.out.println Processing"/]
+N2 --> N3
+N4["process(data)"]
+N3 --> N4
+N5["catch: IOException e"]
+N4 --error--> N5
+N6[/"System.out.println IO Error"/]
+N5 --> N6
+N7["catch: Exception x"]
+N4 --error--> N7
+N8[/"System.out.println Generic"/]
+N7 --> N8
+N9["finally"]
+N4 --success--> N9
+N6 --> N9
+N8 --> N9
+N10[/"System.out.println Done"/]
+N9 --> N10
+N11([end])
+N10 --> N11
+\n
+=== Python ===
+flowchart TD
+N1([start])
+N2["try"]
+N1 --> N2
+N3[/"print Reading"/]
+N2 --> N3
+N4[/"read input"/]
+N3 --> N4
+N5["catch: ValueError as v"]
+N4 --error--> N5
+N6[/"print Value error"/]
+N5 --> N6
+N7["catch: Exception as e"]
+N4 --error--> N7
+N8[/"print Error"/]
+N7 --> N8
+N9["finally"]
+N4 --success--> N9
+N6 --> N9
+N8 --> N9
+N10[/"print Cleanup"/]
+N9 --> N10
+N11([end])
+N10 --> N11
+\n
+=== C++ ===
+flowchart TD
+N1([start])
+N2["try"]
+N1 --> N2
+N3[/"cout Trying something"/]
+N2 --> N3
+N4["execute()"]
+N3 --> N4
+N5["catch: const exception& e"]
+N4 --error--> N5
+N6[/"cout Caught: e.what()"/]
+N5 --> N6
+N8>"return 0"]
+N4 --success--> N8
+N6 --> N8
+N9([end])
+N8 --> N9
+\n

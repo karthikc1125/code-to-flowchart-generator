@@ -1,0 +1,50 @@
+=== C++ ===
+flowchart TD
+N1([start])
+N2["try"]
+N1 --> N2
+N3["a = 10"]
+N2 --> N3
+N4["b = 0"]
+N3 --> N4
+N5{"if: (b == 0)?"}
+N4 --> N5
+N6["throw &quot;error&quot;"]
+N5 --yes--> N6
+N8[/"cout a / b"/]
+N5 --no--> N8
+N9["catch: const char* msg"]
+N6 --error--> N9
+N8 --error--> N9
+N10[/"cout msg"/]
+N9 --> N10
+N12>"return 0"]
+N8 --success--> N12
+N10 --> N12
+N13([end])
+N12 --> N13
+\n
+=== JavaScript ===
+flowchart TD
+N1([start])
+N2["try"]
+N1 --> N2
+N3["a = 10"]
+N2 --> N3
+N4["b = 0"]
+N3 --> N4
+N5{"if: (b === 0)?"}
+N4 --> N5
+N6["throw new Error(&quot;Div by 0&quot;)"]
+N5 --yes--> N6
+N8[/"console.log a"/]
+N5 --no--> N8
+N9["catch: e"]
+N6 --error--> N9
+N8 --error--> N9
+N10[/"console.log e"/]
+N9 --> N10
+N12([end])
+N8 --success--> N12
+N10 --> N12
+\n

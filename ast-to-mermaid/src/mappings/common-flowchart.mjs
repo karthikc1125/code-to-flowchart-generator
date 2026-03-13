@@ -95,7 +95,19 @@ export function processStatements(statements, flow, languageConfig, last, initia
       const id = flow.addReturnStatement(stmt, labelText);
       flow.link(currentLast, id, currentLabel);
       currentLast = id;
-      continue;
+      return { last: currentLast, terminated: true };
+    }
+
+    // 8.5 Throws
+    if (languageConfig.isThrowStatement && languageConfig.isThrowStatement(stmt)) {
+      const info = languageConfig.extractThrowInfo(stmt);
+      const labelText = info.value ? `throw ${info.value}` : 'throw';
+      const id = flow.addAction(stmt, labelText);
+      flow.link(currentLast, id, currentLabel);
+      if (!flow.throwTracker) flow.throwTracker = [];
+      flow.throwTracker.push(id);
+      currentLast = id;
+      return { last: currentLast, terminated: true };
     }
 
     // 9. Breaks
@@ -103,7 +115,7 @@ export function processStatements(statements, flow, languageConfig, last, initia
       const id = flow.addBreakStatement(stmt, 'break');
       flow.link(currentLast, id, currentLabel);
       currentLast = id;
-      continue;
+      return { last: currentLast, terminated: true };
     }
 
     // 10. Continues
@@ -111,11 +123,10 @@ export function processStatements(statements, flow, languageConfig, last, initia
       const id = flow.addContinueStatement(stmt, 'continue');
       flow.link(currentLast, id, currentLabel);
       currentLast = id;
-      continue;
+      return { last: currentLast, terminated: true };
     }
   }
 
-  // console.log("processStatements generated last ID:", currentLast);
   return { last: currentLast };
 }
 

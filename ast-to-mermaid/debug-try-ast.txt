@@ -1,0 +1,465 @@
+[
+  {
+    "type": "try_statement",
+    "text": "try {\n  console.log(\"try\");\n  throw new Error(\"fail\");\n} catch (e) {\n  console.log(\"catch\");\n} finally {\n  console.log(\"finally\");\n}",
+    "named": true,
+    "children": [
+      {
+        "type": "try",
+        "text": "",
+        "named": false,
+        "children": []
+      },
+      {
+        "type": "statement_block",
+        "text": "{\n  console.log(\"try\");\n  throw new Error(\"fail\");\n}",
+        "named": true,
+        "children": [
+          {
+            "type": "{",
+            "text": "",
+            "named": false,
+            "children": []
+          },
+          {
+            "type": "expression_statement",
+            "text": "console.log(\"try\");",
+            "named": true,
+            "children": [
+              {
+                "type": "call_expression",
+                "text": "console.log(\"try\")",
+                "named": true,
+                "children": [
+                  {
+                    "type": "member_expression",
+                    "text": "console.log",
+                    "named": true,
+                    "children": [
+                      {
+                        "type": "identifier",
+                        "text": "console",
+                        "named": true,
+                        "children": []
+                      },
+                      {
+                        "type": ".",
+                        "text": "",
+                        "named": false,
+                        "children": []
+                      },
+                      {
+                        "type": "property_identifier",
+                        "text": "log",
+                        "named": true,
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "type": "arguments",
+                    "text": "(\"try\")",
+                    "named": true,
+                    "children": [
+                      {
+                        "type": "(",
+                        "text": "",
+                        "named": false,
+                        "children": []
+                      },
+                      {
+                        "type": "string",
+                        "text": "\"try\"",
+                        "named": true,
+                        "children": [
+                          {
+                            "type": "\"",
+                            "text": "",
+                            "named": false,
+                            "children": []
+                          },
+                          {
+                            "type": "string_fragment",
+                            "text": "try",
+                            "named": true,
+                            "children": []
+                          },
+                          {
+                            "type": "\"",
+                            "text": "",
+                            "named": false,
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "type": ")",
+                        "text": "",
+                        "named": false,
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": ";",
+                "text": "",
+                "named": false,
+                "children": []
+              }
+            ]
+          },
+          {
+            "type": "throw_statement",
+            "text": "throw new Error(\"fail\");",
+            "named": true,
+            "children": [
+              {
+                "type": "throw",
+                "text": "",
+                "named": false,
+                "children": []
+              },
+              {
+                "type": "new_expression",
+                "text": "new Error(\"fail\")",
+                "named": true,
+                "children": [
+                  {
+                    "type": "new",
+                    "text": "",
+                    "named": false,
+                    "children": []
+                  },
+                  {
+                    "type": "identifier",
+                    "text": "Error",
+                    "named": true,
+                    "children": []
+                  },
+                  {
+                    "type": "arguments",
+                    "text": "(\"fail\")",
+                    "named": true,
+                    "children": [
+                      {
+                        "type": "(",
+                        "text": "",
+                        "named": false,
+                        "children": []
+                      },
+                      {
+                        "type": "string",
+                        "text": "\"fail\"",
+                        "named": true,
+                        "children": [
+                          {
+                            "type": "\"",
+                            "text": "",
+                            "named": false,
+                            "children": []
+                          },
+                          {
+                            "type": "string_fragment",
+                            "text": "fail",
+                            "named": true,
+                            "children": []
+                          },
+                          {
+                            "type": "\"",
+                            "text": "",
+                            "named": false,
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "type": ")",
+                        "text": "",
+                        "named": false,
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": ";",
+                "text": "",
+                "named": false,
+                "children": []
+              }
+            ]
+          },
+          {
+            "type": "}",
+            "text": "",
+            "named": false,
+            "children": []
+          }
+        ]
+      },
+      {
+        "type": "catch_clause",
+        "text": "catch (e) {\n  console.log(\"catch\");\n}",
+        "named": true,
+        "children": [
+          {
+            "type": "catch",
+            "text": "",
+            "named": false,
+            "children": []
+          },
+          {
+            "type": "(",
+            "text": "",
+            "named": false,
+            "children": []
+          },
+          {
+            "type": "identifier",
+            "text": "e",
+            "named": true,
+            "children": []
+          },
+          {
+            "type": ")",
+            "text": "",
+            "named": false,
+            "children": []
+          },
+          {
+            "type": "statement_block",
+            "text": "{\n  console.log(\"catch\");\n}",
+            "named": true,
+            "children": [
+              {
+                "type": "{",
+                "text": "",
+                "named": false,
+                "children": []
+              },
+              {
+                "type": "expression_statement",
+                "text": "console.log(\"catch\");",
+                "named": true,
+                "children": [
+                  {
+                    "type": "call_expression",
+                    "text": "console.log(\"catch\")",
+                    "named": true,
+                    "children": [
+                      {
+                        "type": "member_expression",
+                        "text": "console.log",
+                        "named": true,
+                        "children": [
+                          {
+                            "type": "identifier",
+                            "text": "console",
+                            "named": true,
+                            "children": []
+                          },
+                          {
+                            "type": ".",
+                            "text": "",
+                            "named": false,
+                            "children": []
+                          },
+                          {
+                            "type": "property_identifier",
+                            "text": "log",
+                            "named": true,
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "type": "arguments",
+                        "text": "(\"catch\")",
+                        "named": true,
+                        "children": [
+                          {
+                            "type": "(",
+                            "text": "",
+                            "named": false,
+                            "children": []
+                          },
+                          {
+                            "type": "string",
+                            "text": "\"catch\"",
+                            "named": true,
+                            "children": [
+                              {
+                                "type": "\"",
+                                "text": "",
+                                "named": false,
+                                "children": []
+                              },
+                              {
+                                "type": "string_fragment",
+                                "text": "catch",
+                                "named": true,
+                                "children": []
+                              },
+                              {
+                                "type": "\"",
+                                "text": "",
+                                "named": false,
+                                "children": []
+                              }
+                            ]
+                          },
+                          {
+                            "type": ")",
+                            "text": "",
+                            "named": false,
+                            "children": []
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": ";",
+                    "text": "",
+                    "named": false,
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "type": "}",
+                "text": "",
+                "named": false,
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "finally_clause",
+        "text": "finally {\n  console.log(\"finally\");\n}",
+        "named": true,
+        "children": [
+          {
+            "type": "finally",
+            "text": "",
+            "named": false,
+            "children": []
+          },
+          {
+            "type": "statement_block",
+            "text": "{\n  console.log(\"finally\");\n}",
+            "named": true,
+            "children": [
+              {
+                "type": "{",
+                "text": "",
+                "named": false,
+                "children": []
+              },
+              {
+                "type": "expression_statement",
+                "text": "console.log(\"finally\");",
+                "named": true,
+                "children": [
+                  {
+                    "type": "call_expression",
+                    "text": "console.log(\"finally\")",
+                    "named": true,
+                    "children": [
+                      {
+                        "type": "member_expression",
+                        "text": "console.log",
+                        "named": true,
+                        "children": [
+                          {
+                            "type": "identifier",
+                            "text": "console",
+                            "named": true,
+                            "children": []
+                          },
+                          {
+                            "type": ".",
+                            "text": "",
+                            "named": false,
+                            "children": []
+                          },
+                          {
+                            "type": "property_identifier",
+                            "text": "log",
+                            "named": true,
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "type": "arguments",
+                        "text": "(\"finally\")",
+                        "named": true,
+                        "children": [
+                          {
+                            "type": "(",
+                            "text": "",
+                            "named": false,
+                            "children": []
+                          },
+                          {
+                            "type": "string",
+                            "text": "\"finally\"",
+                            "named": true,
+                            "children": [
+                              {
+                                "type": "\"",
+                                "text": "",
+                                "named": false,
+                                "children": []
+                              },
+                              {
+                                "type": "string_fragment",
+                                "text": "finally",
+                                "named": true,
+                                "children": []
+                              },
+                              {
+                                "type": "\"",
+                                "text": "",
+                                "named": false,
+                                "children": []
+                              }
+                            ]
+                          },
+                          {
+                            "type": ")",
+                            "text": "",
+                            "named": false,
+                            "children": []
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": ";",
+                    "text": "",
+                    "named": false,
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "type": "}",
+                "text": "",
+                "named": false,
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

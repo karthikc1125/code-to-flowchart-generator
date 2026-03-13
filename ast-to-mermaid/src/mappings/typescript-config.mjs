@@ -284,6 +284,55 @@ export const typescriptConfig = {
     return { type: loopType, condition, calls: [] };
   },
   
+  isTryCatch(node) {
+    return node.type === 'try_statement';
+  },
+
+  extractTryCatchInfo(node) {
+    if (!node || node.type !== 'try_statement') return { tryBlock: [], catchBlocks: [], finallyBlock: [] };
+
+    let tryBlock = [];
+    const catchBlocks = [];
+    let finallyBlock = [];
+
+    // The try body is usually the first statement_block child
+    const tryBodyNode = node.children.find(c => c && c.type === 'statement_block');
+    if (tryBodyNode && tryBodyNode.children) {
+      tryBlock = tryBodyNode.children.filter(c => c && c.type !== '{' && c.type !== '}');
+    }
+
+    // Catch clauses
+    const catchNodes = node.children.filter(c => c && c.type === 'catch_clause');
+    for (const catchNode of catchNodes) {
+      let condition = 'error';
+      const paramNode = catchNode.children.find(c => c && c.named && c.type !== 'statement_block');
+      if (paramNode) {
+        condition = textOf(paramNode);
+        if (condition.startsWith('(') && condition.endsWith(')')) {
+          condition = condition.substring(1, condition.length - 1);
+        }
+      }
+
+      const catchBodyNode = catchNode.children.find(c => c && c.type === 'statement_block');
+      let block = [];
+      if (catchBodyNode && catchBodyNode.children) {
+        block = catchBodyNode.children.filter(c => c && c.type !== '{' && c.type !== '}');
+      }
+      catchBlocks.push({ condition, block });
+    }
+
+    // Finally clause
+    const finallyNode = node.children.find(c => c && c.type === 'finally_clause');
+    if (finallyNode) {
+      const finallyBodyNode = finallyNode.children.find(c => c && c.type === 'statement_block');
+      if (finallyBodyNode && finallyBodyNode.children) {
+        finallyBlock = finallyBodyNode.children.filter(c => c && c.type !== '{' && c.type !== '}');
+      }
+    }
+
+    return { tryBlock, catchBlocks, finallyBlock };
+  },
+
   // New functions for enhanced language features
   
   isReturnStatement(node) {
@@ -292,9 +341,18 @@ export const typescriptConfig = {
   
   extractReturnInfo(node) {
     if (!node || !node.children) return { value: '' };
-    // Find the expression being returned
     const returnExpr = node.children.find(c => c && c.named && c.type !== 'return');
     return { value: returnExpr ? returnExpr.text : '' };
+  },
+
+  isThrowStatement(node) {
+    return node.type === 'throw_statement';
+  },
+
+  extractThrowInfo(node) {
+    if (!node || !node.children) return { value: '' };
+    const throwExpr = node.children.find(c => c && c.named && c.type !== 'throw');
+    return { value: throwExpr ? throwExpr.text : '' };
   },
   
   isBreakStatement(node) {

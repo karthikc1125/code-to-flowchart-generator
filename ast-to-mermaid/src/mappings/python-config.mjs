@@ -376,12 +376,79 @@ export const pythonConfig = {
     return { value: returnExpr ? textOf(returnExpr) : '' };
   },
 
+  isThrowStatement(node) {
+    return node.type === 'raise_statement';
+  },
+
+  extractThrowInfo(node) {
+    if (!node || !node.children) return { value: '' };
+    const throwExpr = node.children.find(c => c && c.named && c.type !== 'raise');
+    return { value: throwExpr ? textOf(throwExpr) : '' };
+  },
+
   isBreakStatement(node) {
     return node.type === 'break_statement';
   },
 
   isContinueStatement(node) {
     return node.type === 'continue_statement';
+  },
+
+  isTryCatch(node) {
+    return node.type === 'try_statement';
+  },
+
+  extractTryCatchInfo(node) {
+    if (!node || node.type !== 'try_statement') return { tryBlock: [], catchBlocks: [], finallyBlock: [] };
+
+    let tryBlock = [];
+    const catchBlocks = [];
+    let finallyBlock = [];
+
+    // The try body is usually the first block child
+    const tryBodyNode = node.children.find(c => c && c.type === 'block');
+    if (tryBodyNode && tryBodyNode.children) {
+      tryBlock = tryBodyNode.children.filter(c => c && c.named);
+    }
+
+    // Except clauses (catch)
+    const exceptNodes = node.children.filter(c => c && c.type === 'except_clause');
+    for (const exceptNode of exceptNodes) {
+      let condition = 'Exception';
+      
+      let hasExcept = false;
+      const exceptParts = [];
+      for (const child of exceptNode.children) {
+        if (child.type === 'except') {
+          hasExcept = true;
+          continue;
+        }
+        if (hasExcept && child.named && child.type !== 'block' && child.type !== ':') {
+          exceptParts.push(textOf(child));
+        }
+      }
+      if (exceptParts.length > 0) {
+        condition = exceptParts.join(' ');
+      }
+
+      const exceptBodyNode = exceptNode.children.find(c => c && c.type === 'block');
+      let block = [];
+      if (exceptBodyNode && exceptBodyNode.children) {
+        block = exceptBodyNode.children.filter(c => c && c.named);
+      }
+      catchBlocks.push({ condition, block });
+    }
+
+    // Finally clause
+    const finallyNode = node.children.find(c => c && c.type === 'finally_clause');
+    if (finallyNode) {
+      const finallyBodyNode = finallyNode.children.find(c => c && c.type === 'block');
+      if (finallyBodyNode && finallyBodyNode.children) {
+        finallyBlock = finallyBodyNode.children.filter(c => c && c.named);
+      }
+    }
+
+    return { tryBlock, catchBlocks, finallyBlock };
   }
 };
 
