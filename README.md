@@ -40,31 +40,6 @@ Parsing	Custom AST parsers
 
 
 
----
-
-📂 Project Structure
-
-code-to-flowchart-generator/
-│
-├── frontend/              # React UI
-│   ├── components/
-│   ├── pages/
-│   └── App.jsx
-│
-├── backend/              # Express server
-│   ├── routes/
-│   ├── parsers/
-│   └── controllers/
-│
-├── electron/             # Desktop wrapper
-│   └── main.js
-│
-├── shared/               # Shared utilities
-│
-└── README.md
-
-
----
 
 ⚙️ Installation
 
